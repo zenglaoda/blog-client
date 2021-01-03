@@ -16,9 +16,6 @@ const production = {
     ],
     plugins: [
         [
-            '@babel/preset-typescript'
-        ],
-        [
             'babel-plugin-import',
             {
                 "libraryName": "antd",
@@ -36,9 +33,11 @@ const production = {
         [
             '@babel/plugin-proposal-class-properties', 
         ],
+        // 转换import()函数
         [
-            'babel-plugin-dynamic-import-webpack'
+            '@babel/plugin-syntax-dynamic-import'
         ],
+        // 将辅助函数合并到一个文件中
         [
             "@babel/plugin-transform-runtime",
         ],
