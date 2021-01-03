@@ -24,7 +24,7 @@ const webpackConfig = {
         app: resolvePath('src/app.js'),
     },
     output: {
-        path: resolvePath('static/'),
+        path: resolvePath('dist/'),
         publicPath: '/',
         filename: 'js/[name].js',
         chunkFilename:'js/chunk/[name].[id].js'
@@ -67,7 +67,7 @@ const webpackConfig = {
             },
             // js
             {
-                test: /\.js$/,
+                test: /\.(js|ts|tsx)$/,
                 include: [
                     resolvePath('src')
                 ],
@@ -84,7 +84,7 @@ const webpackConfig = {
             patterns: [
                 {
                     from: resolvePath('static'),
-                    to: resolvePath('static')
+                    to: resolvePath('dist')
                 }
             ]
         }),

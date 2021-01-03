@@ -1,32 +1,23 @@
 const production = {
     presets: [
         [
-            '@babel/preset-env',
-            {
-                useBuiltIns: 'usage',
-                modules: 'auto',
-            }
+            '@babel/preset-typescript'
         ],
         [
             '@babel/preset-react',
         ],
+        [
+            '@babel/preset-env',
+            {
+                useBuiltIns: 'usage',
+                modules: 'false',
+            }
+        ],
     ],
     plugins: [
-        // [
-        //     'babel-plugin-react-css-modules',
-        //     {
-        //         exclude: 'node_modules',
-        //         generateScopedName: '[path][name]__[local]--[hash:base64:5]',
-        //         context: 'src',
-        //         handleMissingStyleName: 'throw',
-        //         autoResolveMultipleImports: false,
-        //         filetypes: {
-        //             '.less': {
-        //                 syntax: 'postcss-less'
-        //             }
-        //         }
-        //     }
-        // ],
+        [
+            '@babel/preset-typescript'
+        ],
         [
             'babel-plugin-import',
             {
@@ -57,14 +48,13 @@ const production = {
 const development = {
     presets: [
         [
+            '@babel/preset-typescript'
+        ],
+        [
             '@babel/preset-react',
         ],
     ],
     plugins: [
-        // 映射jsx文件源码
-        // [
-        //     'transform-react-jsx-source',
-        // ],
         // 按需加载组件和样式，通过按需加载的组件js，自动加载对应的样式
         [
             'babel-plugin-import',
@@ -85,7 +75,7 @@ const development = {
         ],
         // 转换import()函数
         [
-            'babel-plugin-dynamic-import-webpack'
+            '@babel/plugin-syntax-dynamic-import'
         ],
     ],
 };
