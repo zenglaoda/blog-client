@@ -49,7 +49,7 @@ function CreateArticlePage() {
     const updateArticle = (param) => {
         let data = null;
         const [adds, dels] = compareIds(param.tagIds, articleItem.tagIds);
-        ['title', 'description', 'keyword', 'content', 'html'].forEach((key) => {
+        ['title', 'description', 'keyword', 'content'].forEach((key) => {
             if (articleItem[key] !== param[key]) {
                 data = data || {};
                 data[key] = param[key];
@@ -60,6 +60,7 @@ function CreateArticlePage() {
             data.tagIds = param.tagIds;
         }
         if (!data) {
+            message.info('未作任何修改!');
             return;
         }
         data.id = articleItem.id;
@@ -81,7 +82,6 @@ function CreateArticlePage() {
         }
         const baseFormData = form.getFieldsValue();
         baseFormData.content = content;
-        baseFormData.html = editor.getHTML();
         if (articleItem) {
             updateArticle(baseFormData);
         } else {

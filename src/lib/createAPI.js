@@ -6,12 +6,13 @@ export function createAPI(scheme) {
     const baseURL = scheme.baseURL || 'http://127.0.0.1:3000';
     const prefix = scheme.prefix || '';
     const apis = scheme.apis || {};
-    const http = {};
+    const https = {};
     Object.keys(apis).forEach((key) => {
         const apiItem = apis[key];
         const method = apiItem.method || 'get';
         const url = [baseURL, prefix, apiItem.url].join('');
-        http[key] = function(data, options) {
+
+        function http(data, options) {
             const config = {
                 method,
                 url,
@@ -48,7 +49,8 @@ export function createAPI(scheme) {
                     return Promise.reject(res);;
                 });
         }
-    })
-    return http;
+        https[key] = http;
+    });
+    return https;
 }
 

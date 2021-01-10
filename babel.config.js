@@ -1,9 +1,6 @@
 const production = {
     presets: [
         [
-            '@babel/preset-typescript'
-        ],
-        [
             '@babel/preset-react',
         ],
         [
@@ -47,13 +44,13 @@ const production = {
 const development = {
     presets: [
         [
-            '@babel/preset-typescript'
-        ],
-        [
             '@babel/preset-react',
         ],
     ],
     plugins: [
+        [
+            '@babel/plugin-transform-react-jsx-source'
+        ],
         // 按需加载组件和样式，通过按需加载的组件js，自动加载对应的样式
         [
             'babel-plugin-import',

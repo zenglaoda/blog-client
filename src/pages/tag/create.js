@@ -2,7 +2,7 @@ import React from 'react';
 import { withRouter } from 'react-router-dom';
 import { Form, Input, Button, Select, Spin } from 'antd';
 import tagAPI from '@/api/tag';
-import utils from '@/lib/utils';
+import { parseQuery } from '@/lib/utils';
 import './style/create.less';
 
 const layout = {
@@ -18,7 +18,7 @@ class CreateTag extends React.Component {
     constructor(props) {
         super(props);
         const { location } = props;
-        const query = utils.parseQuery(location.search);
+        const query = parseQuery(location.search);
         this.state = {
             list: [],
             loading: {
@@ -101,7 +101,7 @@ class CreateTag extends React.Component {
         );
 
         return (
-            <div className="blp-tag-create-page">
+            <div className="blp-tagCreate-page">
                 <Spin spinning={loading.summer}>
                     <Form {...layout} initialValues={initialValues} onFinish={this.onFinish} className="blp-form">
                         {TagSelect}

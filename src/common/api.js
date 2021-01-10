@@ -2,7 +2,7 @@ import tagAPI from '@/api/tag';
 
 /**
  * @description 获取并组织标签树
- * @param {enum} child, parent, all
+ * @param {enum} type child, parent, all
  * @returns {array} 
  */
 export function getTagList(type='child') {

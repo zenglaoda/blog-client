@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Form, Input, Button, DatePicker, Spin, TreeSelect, Pagination, Menu, Modal } from 'antd';
-import { SearchOutlined, RollbackOutlined,PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useFilterTreeNode } from '@/common/hooks';
 import { getTagList } from '@/common/api';
-import NoteItem from '@/components/noteItem'; 
+import { stringifyQuery } from '@/lib/utils';
 import articleAPI from '@/api/article';
+import NoteItem from '@/components/noteItem'; 
 import './style/index.less';
 
 const { RangePicker } = DatePicker;
@@ -108,7 +109,12 @@ function ArticlePage() {
     const getMenu = (item) => (
         <Menu>
             <Menu.Item>
-                <Link to={`/article/edit?id=${item.id}`}>编辑</Link>                
+                <Link
+                    to={{
+                        pathname: '/article/edit',
+                        search: stringifyQuery({ id: item.id }),
+                    }}
+                >编辑</Link>                
             </Menu.Item>
             <Menu.Item danger onClick={() => onDeleteNoteItem(item)}>
                 删除

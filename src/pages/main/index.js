@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Route, Link, Switch } from 'react-router-dom';
 import { Layout, Menu, Breadcrumb } from 'antd';
 import { TagsOutlined, FileTextOutlined, FileSearchOutlined, LinkOutlined, SnippetsOutlined } from '@ant-design/icons';
-import TagPage from '@/pages/tag/index';
-import TagCreatePage from '@/pages/tag/create';
-import TagEditPage from '@/pages/tag/edit';
+
+// 异步加载页面
+const TagPage = lazy(() => import('@/pages/tag'));
+const TagCreatePage = lazy(() => import('@/pages/tag/create'));
+const TagEditPage = lazy(() => import('@/pages/tag/edit'));
+const LinkPage = lazy(() => import('@/pages/link'));
+const LinkCreatePage = lazy(() => import('@/pages/link/create'));
+const LinkEditPage = lazy(() => import('@/pages/link/edit'));
+const ArticlePage = lazy(() => import('@/pages/article'));
+const ArticleCreatePage = lazy(() => import('@/pages/article/create'));
+const ArticleEditPage = lazy(() => import('@/pages/article/edit'));
+const ArticleDetailPage = lazy(() => import('@/pages/article/detail'));
+const DraftPage = lazy(() => import('@/pages/article/draft'));
+
+// 同步加载页面
+// import TagPage from '@/pages/tag/index';
+// import TagCreatePage from '@/pages/tag/create';
+// import TagEditPage from '@/pages/tag/edit';
 // import LinkPage from '@/pages/link/index';
 // import LinkCreatePage from '@/pages/link/create';
 // import LinkEditPage from '@/pages/link/edit';
@@ -13,8 +28,10 @@ import TagEditPage from '@/pages/tag/edit';
 // import ArticleEditPage from '@/pages/article/edit';
 // import ArticleDetailPage from '@/pages/article/detail';
 // import DraftPage from '@/pages/article/draft';
-// 学习页面
-// import EffectPage from '@/study/hooks/useEffect';
+
+// 组件
+import PageLoad from '@/components/page-load';
+
 import './style/index.less';
 
 const { Header, Content, Sider } = Layout;
@@ -53,8 +70,11 @@ export default class Main extends React.Component {
                             </Menu.Item>
                             {/* // 学习页面 */}
                             <SubMenu key="sub1" title="study">
-                                <Menu.Item key="1">
+                                <Menu.Item key="effect">
                                     <Link to="/study/effect">useEffect</Link>
+                                </Menu.Item>
+                                <Menu.Item key="tui">
+                                    <Link to="/study/tui">Tui-editor</Link>
                                 </Menu.Item>
                             </SubMenu>
                         </Menu>
@@ -67,22 +87,21 @@ export default class Main extends React.Component {
                             <Breadcrumb.Item>App</Breadcrumb.Item>
                         </Breadcrumb>
                         <Content className="bll-content">
-                            <Switch>
-                                <Route path="/tag" component={TagPage} exact/>
-                                <Route path="/tag/create" component={TagCreatePage} exact/>
-                                <Route path="/tag/edit" component={TagEditPage} exact/>
-                                {/* <Route path="/link" component={LinkPage} exact/>
-                                <Route path="/link/create" component={LinkCreatePage} exact/>
-                                <Route path="/link/edit" component={LinkEditPage} exact/>
-                                <Route path="/article" component={ArticlePage} exact/>
-                                <Route path="/article/create" component={ArticleCreatePage} exact/>
-                                <Route path="/article/edit" component={ArticleEditPage} exact/>
-                                <Route path="/article/detail" component={ArticleDetailPage} exact></Route>
-                                <Route path="/draft" component={DraftPage} exact/> */}
-
-                                {/* // 学习页面 */}
-                                {/* <Route path="/study/effect" component={EffectPage} exact/> */}
-                            </Switch>
+                            <Suspense fallback={<PageLoad/>}>
+                                <Switch>
+                                    <Route path="/tag" component={TagPage} exact/>
+                                    <Route path="/tag/create" component={TagCreatePage} exact/>
+                                    <Route path="/tag/edit" component={TagEditPage} exact/>
+                                    <Route path="/link" component={LinkPage} exact/>
+                                    <Route path="/link/create" component={LinkCreatePage} exact/>
+                                    <Route path="/link/edit" component={LinkEditPage} exact/>
+                                    <Route path="/article" component={ArticlePage} exact/>
+                                    <Route path="/article/create" component={ArticleCreatePage} exact/>
+                                    <Route path="/article/edit" component={ArticleEditPage} exact/>
+                                    <Route path="/article/detail" component={ArticleDetailPage} exact/>
+                                    <Route path="/draft" component={DraftPage} exact/>
+                                </Switch>
+                            </Suspense>
                         </Content>
                     </div>
                 </Layout>

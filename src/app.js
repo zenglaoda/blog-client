@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { message } from 'antd';
 import store from '@/redux';
@@ -16,14 +16,11 @@ class App extends React.Component{
     return (
       <Provider store={store}>
         <Router>
-          <Switch>
-            <Route path="/" component={Main} />
-            <Route render={()=>(<div>404</div>)} />
-          </Switch>
+          <Main></Main>
         </Router>
       </Provider>
     );
   }
 }
 
-ReactDOM.render(<App />, document.querySelector('#app'));
+ReactDOM.render(<App />, document.querySelector('#blog-app'));

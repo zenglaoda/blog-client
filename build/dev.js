@@ -9,7 +9,9 @@ function resolvePath(url) {
 
 // 加载并处理css文件
 const loadCSS = [
-    'style-loader',
+    {
+        loader: 'style-loader',
+    },
     'css-loader',
     'postcss-loader',
 ];
@@ -27,7 +29,7 @@ const webpackConfig = {
         path: resolvePath('dist/'),
         publicPath: '/',
         filename: 'js/[name].js',
-        chunkFilename:'js/chunk/[name].[id].js'
+        chunkFilename:'js/chunk/[name].js'
     },
     module: {
         rules: [
@@ -67,7 +69,7 @@ const webpackConfig = {
             },
             // js
             {
-                test: /\.(js|ts|tsx)$/,
+                test: /\.(js)$/,
                 include: [
                     resolvePath('src')
                 ],
@@ -101,8 +103,7 @@ const webpackConfig = {
     resolve: {
         extensions: [
             '.js',
-            '.ts',
-            '.tsx',
+            '.json',
         ],
         alias: {
             '@': resolvePath('src')
@@ -117,9 +118,6 @@ const webpackConfig = {
                 { from: /.*/, to: '/' },
             ]
         },
-        // publicPath: '/',
-        // contentBase: resolvePath('src'),
-        // contentBase: resolvePath('dist')
     },
 };
 

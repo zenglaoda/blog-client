@@ -12,11 +12,20 @@ export default function NoteItem(props) {
     return (
         <section className="blc-note-component" style={style}>
             <div className="blc-note-title">
-				<Link to={ isLink ? props.url : `/article/detail?id=${props.id}` } target="_blank">
-					<span className="blc-note-title__text" title={props.title}>
-						{props.title}      
-					</span>
-				</Link> 
+                {
+                    isLink ?
+                    <a href={props.url} target="_blank">
+                        <span className="blc-note-title__text" title={props.title}>
+                            {props.title}      
+                        </span>
+                    </a>
+                    :
+                    <Link to={`/article/detail?id=${props.id}` }>
+                        <span className="blc-note-title__text" title={props.title}>
+                            {props.title}      
+                        </span>
+                    </Link>
+                }
             </div>
             <Paragraph ellipsis={{ rows: 1, expandable: true, symbol: 'more' }}>
                 {props.description}
@@ -39,7 +48,7 @@ export default function NoteItem(props) {
 				}
 				{
 					!props.menu ? null :
-					<Dropdown overlay={props.menu} trigger="click">
+					<Dropdown overlay={props.menu} trigger="hover">
 						<EllipsisOutlined className="blc-note-menu"/>
 					</Dropdown>
 				}

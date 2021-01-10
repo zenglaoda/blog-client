@@ -105,7 +105,7 @@ function CreateLink(props) {
     }, []);
 
     return (
-        <div className="blp-link-create-page">
+        <div className="blp-linkCreate-page">
             <Spin spinning={summerLoading}>
                 <Form {...layout} form={form} initialValues={initialValues} onFinish={onFinish}>
                     <Form.Item name='title' label='标题' rules={rules.title}>

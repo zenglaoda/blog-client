@@ -1,11 +1,26 @@
+/**
+ * @description 获取类型
+ * @param {any} param
+ * @return {string} 
+ */
 export function getType(param) {
     return Object.prototype.toString.call(param).toLocaleLowerCase().slice(8, -1);
 }
 
+/**
+ * @description 是否是对象类型
+ * @param {any} param 
+ * @returns {boolean}
+ */
 export function isObject(param) {
     return getType(param) === 'object';
 }
 
+/**
+ * @description 获取地址栏参数 
+ * @param {string} url
+ * @returns {object} 
+ */
 export function parseQuery(url) {
     if (typeof url !== 'string' || url.indexOf('?') < 0) {
         return {};
@@ -19,20 +34,25 @@ export function parseQuery(url) {
 
 /**
  * @description 系列化get请求参数
- * @param {*} data 
+ * @param {object} data 
+ * @returns {string}
  */
-export function queryStringify(data = {}) {
+export function stringifyQuery(data = {}) {
     const arr = [];
     Object.keys(data).forEach((key) => {
         arr.push(`${key}=${encodeURIComponent(data[key])}`);
     });
-    return arr.join('&');
+    if (arr.length) {
+        return `?${arr.join('&')}`;
+    }
+    return '';
 }
 
 /**
  * @description 比较两个数组之间的差异 
- * @param {array} fresh 新数组
- * @param {array} origin 旧数组
+ * @param {(string|number)[]} fresh 新数组
+ * @param {(string|number)[]} origin 旧数组
+ * @returns {[(string|number)[], (string|number)[]]}
  */
 export function compareIds(fresh, origin) {
     const summer = [...(new Set(origin.concat(fresh)))];
@@ -50,10 +70,3 @@ export function compareIds(fresh, origin) {
     });
     return [adds, dels];
 }
-
-export default {
-    parseQuery,
-    getType,
-    isObject,
-    queryStringify
-};

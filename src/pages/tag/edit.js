@@ -98,7 +98,7 @@ function EditTag(props) {
         : null
     );
     return (
-        <div className="blp-tag-edit-page">
+        <div className="blp-tagEdit-page">
             <Spin spinning={summerLoading}>
                 <Form {...layout} form={form} onFinish={onFinish} className="blp-form">
                     {TagSelect}

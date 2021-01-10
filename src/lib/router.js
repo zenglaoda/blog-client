@@ -1,6 +1,11 @@
 import { useHistory as useHis } from 'react-router-dom';
-import {queryStringify} from '@/lib/utils';
+import {stringifyQuery} from '@/lib/utils';
 
+/**
+ * @deprecated
+ * @description 路由导航 
+ * @returns {object}
+ */
 export function useHistory() {
     const history = useHis();
     const childHistory = Object.create(history);
@@ -13,7 +18,7 @@ export function useHistory() {
             let url = path.path;
             const query = path.query;
             if (query && typeof query === 'object') {
-                url = `${url}?${queryStringify(query)}`;
+                url = `${url}?${stringifyQuery(query)}`;
             }
             history.push(url);
         }

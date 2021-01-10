@@ -1,8 +1,10 @@
-@prefix: bll;
+@import '~@/assets/style/var/index.less';
 
-.@{prefix}-main-wrapper {
-    height: 100%;
-    .@{prefix} {
+@{w-prefix} {
+    @{l-prefix}{
+        &-main-wrapper {
+            height: 100%;
+        }
         &-body {
             height: 1px;
             flex-grow: 1;

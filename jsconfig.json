@@ -71,18 +71,3 @@
     ]
 }
   
-  /*
-    使用typescript 对js文件进行校验
-      1.通过使用jsDocs注释来配合typescript的检查,支持的jsDocs可参考https://www.typescriptlang.org/docs/handbook/type-checking-javascript-files.html#supported-jsdoc
-  
-  
-  */
-  
-  // jsDocs案例:
-  /**
-   * @param {string | any[]} arr
-   */
-   
-  //  function say(arr) {
-  //   console.log(arr.length);
-  // }

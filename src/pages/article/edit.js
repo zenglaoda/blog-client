@@ -1,29 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, message, Spin } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { useHistory } from '@/lib/router';
-import { parseQuery, compareIds } from '@/lib/utils';
-import {ARTICLE_STATUS_MAP } from '@/enum/article';
+import { compareIds } from '@/lib/utils';
+import { useQuery } from '@/lib/hooks';
+import { ARTICLE_STATUS_MAP } from '@/enum/article';
 import articleAPI from '@/api/article';
 import BaseForm from './components/baseForm';
 import './style/edit.less';
 
-// TODO:  编辑器id替换成ref, editor.resize问题
+// TODO: 编辑器id替换成ref, editor.resize问题
+// TODO: 实现观察者模式，让编辑器资源与文章详情同步加载
+// TODO: tagList 使用redux集中管理
 
-function CreateArticlePage(props) {
-    const query = parseQuery(props.location.search);
+export default function EditArticlePage(props) {
+    const query = useQuery();
     const [isFirstStep, setFirstStep] = useState(false);
+    const [articleItem, setArticleItem] = useState(null);
+    const [editor, setEditor] = useState(null);
+    const [form] = Form.useForm();
     const [loading, setLoading] = useState({ submit: false, getItem: true });
     const [loadError, setLoadError] = useState({ getItem: false });
-    const [articleItem, setArticleItem] = useState();
-    const [editor, setEditor] = useState();
-    const [form] = Form.useForm();
-    const history = useHistory();
     const summerLoading = Object.keys(loading).some(key => loading[key]);
     const saveLoading = loading.update;
 
     if (!query.id) {
-        history.push('/article/create')
+        props.history.push('/article/create');
         return null;
     }
 
@@ -48,7 +49,7 @@ function CreateArticlePage(props) {
     const saveArticle = (param) => {
         let data = null;
         const [adds, dels] = compareIds(param.tagIds, articleItem.tagIds);
-        ['title', 'description', 'keyword', 'content', 'html'].forEach((key) => {
+        ['title', 'description', 'keyword', 'content'].forEach((key) => {
             if (articleItem[key] !== param[key]) {
                 data = data || {};
                 data[key] = param[key];
@@ -59,6 +60,7 @@ function CreateArticlePage(props) {
             data.tagIds = param.tagIds;
         }
         if (!data) {
+            message.info('未作任何修改!');
             return;
         }
         data.id = articleItem.id;
@@ -82,22 +84,8 @@ function CreateArticlePage(props) {
         }
         const baseFormData = form.getFieldsValue();
         baseFormData.content = content;
-        baseFormData.html = editor.getHTML();
         saveArticle(baseFormData);
     };
-
-    useEffect(() => {
-        const mdEditor = window.editormd('blp-articleEdit-editor', {
-            width  : '100%',
-            height : '600px',
-            path   : '/editormd/lib/',
-            theme : "dark",
-            previewTheme : "dark",
-            editorTheme : "pastel-on-dark",
-            saveHTMLToTextarea: true
-        });
-        setEditor(mdEditor);
-    }, []);
 
     useEffect(() => {
         changeLoadingStatus({ getItem: true });
@@ -107,7 +95,21 @@ function CreateArticlePage(props) {
                     title: item.title,
                     description: item.description,
                     tagIds: item.tags.map(ele => ele.tagId),
-                    status: item.keyword
+                    keyword: item.keyword,
+                    status: item.status
+                });
+                const mdEditor = window.editormd('blp-articleEdit-editor', {
+                    width  : '100%',
+                    height : '600px',
+                    path   : '/editormd/lib/',
+                    theme : "dark",
+                    previewTheme : "dark",
+                    editorTheme : "pastel-on-dark",
+                    saveHTMLToTextarea: true,
+                    onload() {
+                        this.setMarkdown(item.content);
+                        setEditor(mdEditor);
+                    }
                 });
                 setArticleItem({
                     id: item.id,
@@ -121,7 +123,7 @@ function CreateArticlePage(props) {
                 });
                 changeLoadErrorStatus({ getItem: false });
             })
-            .catch(() => {
+            .catch((e) => {
                 changeLoadErrorStatus({ getItem: true });
             })
             .finally(() => {
@@ -129,18 +131,11 @@ function CreateArticlePage(props) {
             });
     }, [query.id]);
 
-    // useEffect(() => {
-    //     if (editor && !isFirstStep) {
-    //         editor.resize();
-    //         editor.setValue(articleItem.content);
-    //     }
-    // }, [editor, isFirstStep]);
-
     useEffect(() => {
-        if (editor && articleItem) {
-            editor.setValue(articleItem.content);
+        if (editor && !isFirstStep) {
+            editor.resize();
         }
-    }, [editor, articleItem]);
+    }, [editor, isFirstStep]);
 
     const StepSwitch = (
         isFirstStep ?
@@ -182,5 +177,3 @@ function CreateArticlePage(props) {
         </div>
     );
 }
-
-export default CreateArticlePage;

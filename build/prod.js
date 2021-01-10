@@ -146,18 +146,16 @@ const webpackConfig = {
         new Webpack.NamedChunksPlugin(getNamedChunks()),
 
         new Webpack.HashedModuleIdsPlugin()
-
-        // new BundleAnalyzerPlugin()
     ],
     optimization: {
         splitChunks: {
             chunks: 'all',
             cacheGroups: {
                 libs: {
+                    chunks: 'initial',   // 将页面初始加载中引入的node_modules模块进行拆分
                     name: 'chunk-libs',
                     test: /[\\/]node_modules[\\/]/,
                     priority: 10,
-                    chunks: 'initial'   // 将页面初始加载中引入的node_modules模块进行拆分
                 },
                 antdUI: {
                     name: 'chunk-antdUI',
@@ -167,9 +165,9 @@ const webpackConfig = {
             }
         },
         runtimeChunk: 'single',
-        minimize: false,
+        minimize: true,
         minimizer: [
-            new OptimizeCssAssetsWebpackPlugin()
+            new OptimizeCssAssetsWebpackPlugin(),
         ]
     }
 };
