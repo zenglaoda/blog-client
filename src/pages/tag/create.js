@@ -1,17 +1,11 @@
 import React from 'react';
 import { withRouter } from 'react-router-dom';
 import { Form, Input, Button, Select, Spin } from 'antd';
-import tagAPI from '@/api/tag';
+import { layout, tailLayout } from '@/common/layout';
+import { createTagAPI, getTagListAPI } from '@/api/tag';
 import { parseQuery } from '@/lib/utils';
 import './style/create.less';
 
-const layout = {
-    labelCol: { span: 6 },
-    wrapperCol: { span: 18 },
-};
-const tailLayout = {
-    wrapperCol: { offset: 6, span: 18 },
-};
 
 @withRouter
 class CreateTag extends React.Component {
@@ -21,16 +15,13 @@ class CreateTag extends React.Component {
         const query = parseQuery(location.search);
         this.state = {
             list: [],
+            level: Number(query.level) === 2 ? 2 : 1,
             loading: {
                 summer: false,
+                create: false
             },
-            level: Number(query.level) === 2 ? 2 : 1,
         };
-    }
-
-    onFinish = (form) => {
-        form.pid = this.state.level === 1 ? 0 : form.pid;
-        this.createTag(form);
+        this.getTagList = null;
     }
 
     // 设置加载状态
@@ -42,8 +33,11 @@ class CreateTag extends React.Component {
 
     // 创建标签
     createTag(params) {
-        this.setLoading('summer', true);
-        return tagAPI.create(params)
+        this.setLoading('create', true);
+        return createTagAPI().request(params)
+            .finally(() => {
+                this.setLoading('create', false);
+            })
             .then(() => {
                 this.props.history.push('/tag');
             })
@@ -56,7 +50,8 @@ class CreateTag extends React.Component {
             return;
         }
         this.setLoading('summer', true);
-        return tagAPI.getList()
+        this.getTagList = getTagListAPI(); 
+        return this.getTagList.request()
             .then((list) => {
                 this.setState({
                     list: list.filter(ele => !ele.pid)
@@ -64,11 +59,21 @@ class CreateTag extends React.Component {
             })
             .finally(() => {
                 this.setLoading('summer');
-            });
+            })
+            .catch(() => {});
+    }
+
+    onFinish = (form) => {
+        form.pid = this.state.level === 1 ? 0 : form.pid;
+        this.createTag(form);
     }
 
     componentDidMount() {
         this.getList();
+    }
+
+    componentWillUnmount() {
+        this.getTagList && this.getTagList.cancel();
     }
     
     render() {
@@ -93,8 +98,8 @@ class CreateTag extends React.Component {
         const TagSelect = (
             level === 2 ?
             <Form.Item name="pid" label="一级标签" rules={rules.pid}>
-                <Select placeholder="请选择一级标签">
-                    {list.map(tag => (<Select.Option value={tag.id} key={tag.id}>{tag.name}</Select.Option>))}
+                <Select placeholder="请选择一级标签" showSearch allowClear optionFilterProp="label">
+                    {list.map(tag => (<Select.Option value={tag.id} key={tag.id} label={tag.name}>{tag.name}</Select.Option>))}
                 </Select>
             </Form.Item>
             : null
@@ -112,7 +117,7 @@ class CreateTag extends React.Component {
                             <Input.TextArea rows={4} allowClear maxLength={300} placeholder='请输入描述'/>
                         </Form.Item>
                         <Form.Item {...tailLayout}>
-                            <Button type='primary' htmlType="submit">
+                            <Button type='primary' loading={loading.create} htmlType="submit">
                                 Submit
                             </Button>
                         </Form.Item>

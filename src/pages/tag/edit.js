@@ -1,65 +1,48 @@
 import React, { useState, useEffect } from 'react';
+import { useHistory } from "react-router-dom";
 import { Form, Input, Button, Select, Spin } from 'antd';
-import tagAPI from '@/api/tag';
+import { layout, tailLayout } from '@/common/layout';
+import { updateTagAPI, getTagListAPI, getTagItemAPI } from '@/api/tag';
 import { parseQuery } from '@/lib/utils';
+import { useRequest } from '@/lib/hooks';
 import './style/edit.less';
 
-const layout = {
-    labelCol: { span: 6 },
-    wrapperCol: { span: 18 },
-};
-const tailLayout = {
-    wrapperCol: { offset: 6, span: 18 },
-};
 function EditTag(props) {
+    const history = useHistory();
     const query = parseQuery(props.location.search);
     query.id = Number(query.id);
     if (!query.id) {
+        history.push('/tag');
         return null;
     }
-    const [loading, setLoading] = useState({ getItem: true, getList: true, updateItem: false });
     const [tagList, setTagList] = useState([]);
     const [tagItem, setTagItem] = useState({});
     const [form] = Form.useForm();
-    const summerLoading = Object.keys(loading).some(key => loading[key]);
-    console.log(summerLoading);
+    const updateTag = useRequest(updateTagAPI, { unmountAbort: false });
+    const getTagList = useRequest(getTagListAPI);
+    const getTagItem = useRequest(getTagItemAPI);
+    const summerLoading = [updateTag].some(item => item.loading);
 
-    const changeLoadingStatus = (status = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, status));
-    };
     const onFinish = (formData) => {
-        formData.id = query.id;
         delete formData.pid;
-        if (loading.updateItem) {
-            return;
-        }
-        changeLoadingStatus({ updateItem: true });
-        tagAPI.update(formData)
-            .then(() => {})
-            .catch(() => {})
-            .finally(() => {
-                changeLoadingStatus({ updateItem: false });
-            });
+        formData.id = query.id;
+        updateTag(formData)
+            .then(() => {
+                history.push('/tag');
+            })
+            .catch(() => {});
     };
 
     useEffect(() => {
-        console.log('start getList');
-        changeLoadingStatus({ getList: true });
-        tagAPI.getList()
+        getTagList()
             .then((list) => {
                 setTagList(list.filter(ele => !ele.pid));
             })
-            .catch(() => {})
-            .finally(() => {
-                console.log('end getList');
-                changeLoadingStatus({ getList: false })
-            });
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
-        console.log('start getItem');
-        changeLoadingStatus({ getItem: true });
-        tagAPI.getItem({ id: query.id })
+        getTagItem({ id: query.id })
             .then((item) => {
                 setTagItem(item);
                 form.setFieldsValue({
@@ -68,11 +51,7 @@ function EditTag(props) {
                     description: item.description,
                 });
             })
-            .catch(() => {})
-            .finally(() => {
-                console.log('end getItem');
-                changeLoadingStatus({ getItem: false });
-            });
+            .catch(() => {});
     }, [query.id]);
 
     const rules = {
@@ -109,7 +88,7 @@ function EditTag(props) {
                         <Input.TextArea rows={4} allowClear maxLength={300} placeholder='请输入描述'/>
                     </Form.Item>
                     <Form.Item {...tailLayout}>
-                        <Button type='primary' htmlType="submit">
+                        <Button type='primary' loading={updateTag.loading} htmlType="submit">
                             Submit
                         </Button>
                     </Form.Item>

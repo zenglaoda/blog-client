@@ -1,41 +1,77 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Form, Input, Button, DatePicker, Spin, TreeSelect, Pagination, Menu, Modal } from 'antd';
+import { Form, Input, Button, DatePicker, Spin, Menu, Modal } from 'antd';
 import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { useFilterTreeNode } from '@/common/hooks';
-import { getTagList } from '@/common/api';
+import { setTagTreeSelectable } from '@/common/utils';
+import { usePagination, useRequest } from '@/lib/hooks';
+import { getLinkListAPI, destroyLinkAPI } from '@/api/link';
+import { getTagListAPI } from '@/api/tag';
 import NoteItem from '@/components/noteItem'; 
-import linkAPI from '@/api/link';
+import BlogPagination from '@/components/pagination'; 
+import BlogTreeSelect from '@/components/tree-select'; 
 import './style/index.less';
 
 const { RangePicker } = DatePicker;
 
 function LinkPage() {
-    const [tagList, setTagList] = useState([]);
+    const [tagTree, setTagTree] = useState([]);
     const [linkList, setLinkList] = useState([]);
-    const [loading, setLoading] = useState({ getTagList: true, getLinkList: true });
-    const [pager, setPager] = useState({ total: 0, page: 1, pageSize: 10 });
     const [form] = Form.useForm();
-    const filterTreeNode = useFilterTreeNode();
-    const summerLoading = Object.keys(loading).some(key => loading[key]);
+    const [pager] = usePagination();
+    const getLinkList = useRequest(getLinkListAPI);
+    const getTagList = useRequest(getTagListAPI);
+    const destroyLink = useRequest(destroyLinkAPI, { unmountAbort: false });
+
     const initialValues = {
         keyword: '',
         tagIds: [],
         date: []
     };
 
-    const changeLoadingState = (state = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, state));
+
+    const getParams = () => {
+        const formData = form.getFieldsValue(true);
+        const params = {
+            page: pager.page,
+            pageSize: pager.pageSize,
+            keyword: formData.keyword,
+            startDate: '',
+            endDate: '',
+            tagIds: '',
+        };
+
+        if (Array.isArray(formData.tagIds)) {
+            params.tagIds = formData.tagIds.join(',');
+        }
+
+        if (Array.isArray(formData.date) && formData.date.length) {
+            params.startDate = formData.date[0].valueOf();
+            params.endDate = formData.date[1].valueOf();
+        }
+        return params;
     };
-    const changePagerState = (state = {}) => {
-        setPager(prePager => Object.assign({}, prePager, state));
+
+    const getList = () => {
+        const params = getParams();
+        getLinkList(params)
+            .then((res) => {
+                setLinkList(res.rows || []);
+                pager.setTotal(res.total);
+                if (pager.page !== 1 && !linkList.length) {
+                    pager.setPage(1);
+                    getList();
+                }
+            })
+            .catch(() => {});
     };
-    const onFinish = (formData) => {
-        getList(formData);        
+
+    const onFinish = () => {
+        getList();        
     };
+
     const onResetForm = () => {
         form.resetFields();
-        setPager({ page: 1, pageSize: 10 });
+        pager.reset();
         getList();
     };
 
@@ -44,15 +80,26 @@ function LinkPage() {
             title: `确定删除链接 "${item.title}" ?`,
             icon: <ExclamationCircleOutlined />,
             onOk() {
-                return linkAPI.destroy({ id: item.id })
+                return destroyLink({ id: item.id })
                     .then(() => {
-                        setLinkList(linkList.filter(ele => ele !== item));
+                        getList();
                     })
-                    .finally(() => {});
+                    .catch(() => {});
             },
-            onCancel() {},
+            onCancel() {
+                destroyLink.cancel();
+            },
         });
     };
+
+    useEffect(() => {
+        getList();
+        getTagList()
+            .then((tags) => {
+                setTagTree(setTagTreeSelectable(tags || []));
+            })
+            .catch(() => {});
+    }, []);
 
     const getMenu = (item) => (
         <Menu>
@@ -65,54 +112,6 @@ function LinkPage() {
         </Menu>
     );
 
-
-    const getParams = (formData) => {
-        const params = {
-            page: pager.page,
-            pageSize: pager.pageSize,
-            keyword: '',
-            startDate: '',
-            endDate: '',
-            tagIds: '',
-        };
-        if (!formData) {
-            return params;
-        }
-        params.keyword = formData.keyword || params.keyword;
-        if (Array.isArray(formData.tagIds) && formData.tagIds.length) {
-            params.tagIds = formData.tagIds.join(',');
-        }
-        if (Array.isArray(formData.date) && formData.date.length) {
-            params.startDate = formData.date[0].valueOf();
-            params.endDate = formData.date[1].valueOf();
-        }
-        return params
-    };
-    const getList = (formData) => {
-        changeLoadingState({ getLinkList: true });
-        const params = getParams(formData);
-        linkAPI.getList(params)
-            .then((res) => {
-                setLinkList(res.rows || []);
-                changePagerState({ total: res.total || 0 });
-            })
-            .catch(() => {})
-            .finally(() => changeLoadingState({ getLinkList: false }))        
-    };
-
-    useEffect(() => {
-        getList();
-    }, []);
-
-    useEffect(() => {
-        changeLoadingState({ getTagList: true});
-        getTagList('all')
-            .then((tags) => {
-                setTagList(tags);
-            })
-            .finally(() => changeLoadingState({ getTagList: false }));
-    }, [])
-
     return (
         <section className="blp-link-page">
             <section className="blp-link-header">
@@ -121,28 +120,18 @@ function LinkPage() {
                         <Input placeholder="请输入关键字"/>
                     </Form.Item>
                     <Form.Item name="tagIds" label="标签">
-                        <TreeSelect
-                            style={{width: 240}}
-                            filterTreeNode={filterTreeNode}
-                            treeData={tagList}
-                            maxTagCount={5}
-                            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                            showSearch
-                            allowClear
-                            multiple
-                            placeholder="请选择标签"
-                        />
+                        <BlogTreeSelect treeData={tagTree}/>
                     </Form.Item>
                     <Form.Item label="创建时间" name="date">
                         <RangePicker />
                     </Form.Item>
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={summerLoading} icon={<SearchOutlined/>}>
-                        Submit
+                        <Button type="primary" htmlType="submit" loading={getLinkList.loading} icon={<SearchOutlined/>}>
+                            Submit
                         </Button>
                     </Form.Item>
                     <Form.Item>
-                        <Button onClick={onResetForm} loading={summerLoading} icon={<RollbackOutlined/>}>
+                        <Button onClick={onResetForm} loading={getLinkList.loading} icon={<RollbackOutlined/>}>
                             Reset
                         </Button>
                     </Form.Item>
@@ -154,22 +143,12 @@ function LinkPage() {
                 </Link>
             </section>
             <section className="blp-link-main">
-                <Spin spinning={summerLoading} style={{minHeight: 100}}>
+                <Spin spinning={getLinkList.loading} style={{minHeight: 100}}>
                     {linkList.map(item => <NoteItem key={String(item.id)} {...item}  menu={getMenu(item)} />)}
                 </Spin>
             </section>
             <section className="blp-link-footer">
-                <Pagination
-                    disabled={summerLoading}
-                    current={pager.page}
-                    pageSize={pager.pageSize}
-                    total={pager.total}
-                    onChange={(page) => changePagerState({page})}
-                    onShowSizeChange={() => changePagerState({pageSize})}
-                    showSizeChanger
-                    size="small"
-                    showTotal={total => `共${total}条`}                
-                />
+                <BlogPagination disabled={getLinkList.loading} pager={pager} onChanges={getList}/>
             </section>
         </section>
     );

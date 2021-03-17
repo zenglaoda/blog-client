@@ -1,64 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Form, Input, Button, DatePicker, Spin, TreeSelect, Pagination, Menu, Modal } from 'antd';
+import { Form, Input, Button, DatePicker, Spin, Pagination, Menu, Modal } from 'antd';
 import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { useFilterTreeNode } from '@/common/hooks';
-import { getTagList } from '@/common/api';
+import { destroyArticleAPI, getArticleListAPI } from '@/api/article';
+import { getTagListAPI } from '@/api/tag';
+import { usePagination, useRequest } from '@/lib/hooks';
 import { stringifyQuery } from '@/lib/utils';
-import articleAPI from '@/api/article';
+import { setTagTreeSelectable } from '@/common/utils';
 import NoteItem from '@/components/noteItem'; 
+import BlogTreeSelect from '@/components/tree-select';
 import './style/index.less';
+import BlogPagination from '@/components/pagination';
 
 const { RangePicker } = DatePicker;
 
 function ArticlePage() {
-    const [tagList, setTagList] = useState([]);
+    const [tagTree, setTagTree] = useState([]);
     const [articleList, setArticleList] = useState([]);
-    const [loading, setLoading] = useState({ getTagList: true, getArticleList: true, delete: false });
-    const [pager, setPager] = useState({ total: 0, page: 1, pageSize: 10 });
+    const [pager] = usePagination();
     const [form] = Form.useForm();
-    const filterTreeNode = useFilterTreeNode();
-    const summerLoading = ['getTagList', 'getArticleList'].some(key => loading[key]);
+    const getTagList = useRequest(getTagListAPI);
+    const getArticleList = useRequest(getArticleListAPI);
+    const destroyArticle = useRequest(destroyArticleAPI, { unmountAbort: false});
 
     const initialValues = {
         keyword: '',
         tagIds: [],
         date: []
     };
-    const changeLoadingState = (state = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, state));
-    };
-    const changePagerState = (state = {}) => {
-        setPager(prePager => Object.assign({}, prePager, state));
-    };
 
-    const onDeleteNoteItem = (item) => {
-        Modal.confirm({
-            title: `确定删除笔记 "${item.title}" ?`,
-            icon: <ExclamationCircleOutlined />,
-            onOk() {
-                changeLoadingState({ delete: true });
-                return articleAPI.destroy({ id: item.id })
-                    .then(() => {
-                        setArticleList(articleList.filter(ele => ele !== item));
-                    })
-                    .finally(() => {
-                        changeLoadingState({ delete: false });
-                    })
-            },
-            onCancel() {},
-          });
-    };
-
-    const onFinish = (formData) => {
-        getList(formData);        
-    };
-    const onResetForm = () => {
-        form.resetFields();
-        setPager({ page: 1, pageSize: 10 });
-        getList();
-    };
-    const getParams = (formData) => {
+    // 获取查询参数
+    const getParams = () => {
+        const formData = form.getFieldsValue();
         const params = {
             page: pager.page,
             pageSize: pager.pageSize,
@@ -67,44 +40,71 @@ function ArticlePage() {
             endDate: '',
             tagIds: '',
         };
-        if (!formData) {
-            return params;
-        }
         params.keyword = formData.keyword || params.keyword;
-        if (Array.isArray(formData.tagIds) && formData.tagIds.length) {
+
+        if (Array.isArray(formData.tagIds)) {
             params.tagIds = formData.tagIds.join(',');
         }
         if (Array.isArray(formData.date) && formData.date.length) {
             params.startDate = formData.date[0].valueOf();
             params.endDate = formData.date[1].valueOf();
         }
-        return params
+        return params;
     };
-    const getList = (formData) => {
-        changeLoadingState({ getArticleList: true });
-        const params = getParams(formData);
-        articleAPI.getList(params)
+
+    // 获取列表
+    const getList = () => {
+        const params = getParams();
+        getArticleList(params)
             .then((res) => {
+                pager.setTotal(res.total);
                 setArticleList(res.rows || []);
-                changePagerState({ total: res.total || 0 });
+                if (pager.page !== 1 && !articleList.length) {
+                    pager.setPage(1);
+                    getList();
+                }
             })
-            .catch(() => {})
-            .finally(() => changeLoadingState({ getArticleList: false }))        
+            .catch(() => {});
+    };
+
+    // 点击删除笔记
+    const onDeleteNoteItem = (item) => {
+        Modal.confirm({
+            title: `确定删除笔记 "${item.title}" ?`,
+            icon: <ExclamationCircleOutlined />,
+            onOk() {
+                return destroyArticle({ id: item.id })
+                    .then(() => {
+                        getList();
+                    })
+                    .catch(() => {});
+            },
+            onCancel() {
+                destroyArticle.cancel();
+            },
+        });
+    };
+
+    // 点击搜索
+    const onSearch = () => {
+        getList();        
+    };
+
+    // 点击重置
+    const onReset = () => {
+        form.resetFields();
+        pager.reset();
+        getList();
     };
 
     useEffect(() => {
         getList();
-    }, []);
-
-    useEffect(() => {
-        changeLoadingState({ getTagList: true});
-        getTagList('all')
+        getTagList()
             .then((tags) => {
-                setTagList(tags);
+                setTagTree(setTagTreeSelectable(tags));
             })
-            .catch(() => {})
-            .finally(() => changeLoadingState({ getTagList: false }));
-    }, [])
+            .catch(() => {});
+    }, []);
 
     const getMenu = (item) => (
         <Menu>
@@ -116,7 +116,7 @@ function ArticlePage() {
                     }}
                 >编辑</Link>                
             </Menu.Item>
-            <Menu.Item danger onClick={() => onDeleteNoteItem(item)}>
+            <Menu.Item danger disabled={destroyArticle.loading} onClick={() => onDeleteNoteItem(item)}>
                 删除
             </Menu.Item>
         </Menu>
@@ -125,33 +125,23 @@ function ArticlePage() {
     return (
         <section className="blp-article-page">
             <section className="blp-article-header">
-                <Form onFinish={onFinish} form={form} initialValues={initialValues} layout="inline" className="blg-ant-form-inline">
+                <Form onFinish={onSearch} form={form} initialValues={initialValues} layout="inline" className="blg-ant-form-inline">
                     <Form.Item label="关键字" name="keyword">
-                        <Input placeholder="请输入关键字"/>
+                        <Input placeholder="请输入关键字" allowClear maxLength={100}/>
                     </Form.Item>
                     <Form.Item name="tagIds" label="标签">
-                        <TreeSelect
-                            style={{width: 240}}
-                            filterTreeNode={filterTreeNode}
-                            treeData={tagList}
-                            maxTagCount={5}
-                            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                            showSearch
-                            allowClear
-                            multiple
-                            placeholder="请选择标签"
-                        />
+                        <BlogTreeSelect treeData={tagTree}/>
                     </Form.Item>
                     <Form.Item label="创建时间" name="date">
                         <RangePicker />
                     </Form.Item>
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={summerLoading} icon={<SearchOutlined/>}>
-                        Submit
+                        <Button type="primary" htmlType="submit" loading={getArticleList.loading} icon={<SearchOutlined/>}>
+                            Submit
                         </Button>
                     </Form.Item>
                     <Form.Item>
-                        <Button onClick={onResetForm} loading={summerLoading} icon={<RollbackOutlined/>}>
+                        <Button onClick={onReset} loading={getArticleList.loading} icon={<RollbackOutlined/>}>
                             Reset
                         </Button>
                     </Form.Item>
@@ -165,22 +155,12 @@ function ArticlePage() {
                 </Link>
             </section>
             <section className="blp-article-main">
-                <Spin spinning={summerLoading}>
+                <Spin spinning={getArticleList.loading}>
                     {articleList.map(item => <NoteItem  key={String(item.id)} {...item} menu={getMenu(item)} />)}
                 </Spin>
             </section>
             <section className="blp-article-footer">
-                <Pagination
-                    disabled={summerLoading}
-                    current={pager.page}
-                    pageSize={pager.pageSize}
-                    total={pager.total}
-                    onChange={(page) => changePagerState({page})}
-                    onShowSizeChange={() => changePagerState({pageSize})}
-                    showSizeChanger
-                    size="small"
-                    showTotal={total => `共${total}条`}                
-                />
+                <BlogPagination pager={pager} disabled={getArticleList.loading} onChanges={getList}/>
             </section>
         </section>
     );

@@ -2,7 +2,7 @@ import { useHistory as useHis } from 'react-router-dom';
 import {stringifyQuery} from '@/lib/utils';
 
 /**
- * @deprecated
+ * @deprecated 过度封装
  * @description 路由导航 
  * @returns {object}
  */

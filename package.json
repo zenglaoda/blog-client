@@ -7,10 +7,9 @@
   "scripts": {
     "eslint:init": "./node_modules/.bin/eslint --init",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "demo": "set NODE_ENV=development&& node ./demo/bind.js",
     "dev": "set NODE_ENV=development&& webpack-dev-server --progress --config ./build/dev.js",
-    "build:dev": "set NODE_ENV=development&& webpack --config ./build/dev.js",
-    "build:prod": "set NODE_ENV=production&& webpack --config ./build/prod.js"
+    "build": "set NODE_ENV=production&& webpack --config ./build/prod.js",
+    "build:dev": "set NODE_ENV=development&& webpack --config ./build/dev.js"
   },
   "author": "",
   "license": "ISC",

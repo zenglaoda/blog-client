@@ -7,6 +7,8 @@ const { Paragraph } = Typography;
 
 function TagItem(props) {
     const { style } = props;
+    const getPlaceholder = value => (value === undefined || value === null) ? '--' : value;
+    
     return (
         <section className="blpc-tagItem-component" style={style}>
             <div className="blpc-tagItem-title">
@@ -25,16 +27,16 @@ function TagItem(props) {
                     :
                     <span className="blpc-tagItem-property__item">
                         子标签数:&nbsp;
-                        {props.childs}
+                        {getPlaceholder(props.childs)}
                     </span>
                 }
                 <span className="blpc-tagItem-property__item">
                     文章数:&nbsp;
-                    {props.articles}
+                    {getPlaceholder(props.articles)}
                 </span>
                 <span className="blpc-tagItem-property__item">
                     链接数:&nbsp;
-                    {props.links}
+                    {getPlaceholder(props.links)}
                 </span>
             </div>
             <div className="blpc-tagItem-property">

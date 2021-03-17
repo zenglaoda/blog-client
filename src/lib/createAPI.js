@@ -1,5 +1,5 @@
+import axios from 'axios';
 import { message, notification } from 'antd';
-import ajax from './ajax';
 import { isObject } from './utils';
 
 export function createAPI(scheme) {
@@ -12,12 +12,13 @@ export function createAPI(scheme) {
         const method = apiItem.method || 'get';
         const url = [baseURL, prefix, apiItem.url].join('');
 
-        function http(data, options) {
-            const config = {
+        function http(data, axiosConfig = {}, options = {}) {
+            const config = Object.assign({
                 method,
                 url,
-                timeout: 6000
-            };
+                timeout: 6 * 1000
+            }, axiosConfig);
+
             const opt = Object.assign({
                 catch: true
             }, options);
@@ -28,7 +29,11 @@ export function createAPI(scheme) {
             if (method === 'post') {
                 config.data = data;
             }
-            return ajax(config)
+            
+            return axios(config)
+                .then((Response) => {
+                    return Response.data;
+                })
                 .then((res) => {
                     const title = isObject(res.message) ? res.message.title : '';
                     const description = isObject(res.message) ? res.message.content : res.message;

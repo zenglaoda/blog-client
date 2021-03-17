@@ -139,8 +139,8 @@ const webpackConfig = {
         }),
 
         new MiniCssExtractPlugin({
-            filename: 'css/[name].[contenthash:].css',
-            chunkFilename: 'css/[name].[contenthash:].css'
+            filename: 'css/[name].[contenthash:8].css',
+            chunkFilename: 'css/[id].[contenthash:8].css'
         }),
 
         new Webpack.NamedChunksPlugin(getNamedChunks()),

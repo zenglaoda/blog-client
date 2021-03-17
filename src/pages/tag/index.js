@@ -1,32 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; 
-import { Form, Button, TreeSelect, Spin, Menu, Dropdown, Modal } from 'antd';
+import { Form, Button, Spin, Menu, Dropdown, Modal } from 'antd';
 import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
- import { getTagList } from '@/common/api';
-import { useFilterTreeNode } from '@/common/hooks';
-import { useHistory } from '@/lib/router';
-import relationAPI from '@/api/relation';
-import tagAPI from '@/api/tag';
+import { RELATION_TYPE } from '@/enum/article';
+import { useRequest } from '@/lib/hooks';
+import { getRelationListAPI } from '@/api/relation';
+import { destroyTagAPI, getTagListAPI } from '@/api/tag';
+import { setTagTreeSelectable } from '@/common/utils';
+import BlogTreeSelect from '@/components/tree-select';
 import TagItem from './components/tagItem';
 import './style/index.less';
 
 function TagList() {
+    const [tagTree, setTagTree] = useState([]);
     const [tagList, setTagList] = useState([]);
-    const [list, setList] = useState([]);
-    const [loading, setLoading] = useState({ getList: true, getRelations: true });
     const [form] = Form.useForm();
-    const filterTreeNode = useFilterTreeNode();
-    const summerLoading = Object.keys(loading).some(key=>loading[key]);
-    
+    const destroyTag = useRequest(destroyTagAPI);
+    const getRelationList = useRequest(getRelationListAPI);
+    const getTagList = useRequest(getTagListAPI);
+
     const initialValues = {
         tagIds: [],
     };
-    const changeLoadingStatus = (status = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, status));
+
+    const getList = (formData) => {
+        const tagMaps = {};
+        const tags = [];
+        tagTree.forEach(tag => {
+            tagMaps[tag.id] = tag;
+            tags.push(tag);
+            tag.children.forEach((child) => {
+                tagMaps[child.id] = child;
+                tags.push(child);
+            });
+        }); 
+        if (!formData || !formData.tagIds.length) {
+            setTagList(tags);
+            return;
+        }
+        const maps = {};
+        formData.tagIds.forEach((id) => {
+            maps[id] = tagMaps[id];
+            if (!maps[id].pid) {
+                maps[id].children.forEach((child) => {
+                    maps[child.id] = child;
+                });
+            }
+        });
+        setTagList(Object.values(maps));
     };
+
     const onFinish = (formData) => {
         getList(formData);
     };
+
     const onResetForm = () => {
         form.resetFields();
         getList();
@@ -37,89 +64,76 @@ function TagList() {
             title: `确定删除标签 "${item.name}" ?`,
             icon: <ExclamationCircleOutlined />,
             onOk() {
-                return tagAPI.destroy({ id: item.id })
+                return destroyTag({ id: item.id })
                     .then(() => {
-                        setList(list.filter(ele => ele !== item));
                         if (item.parentTag) {
-                            item.parentTag = item.parentTag.children.filter(ele => ele!== item);
+                            item.parentTag.children = item.parentTag.children.filter(ele => ele!== item);
                         }
+                        setTagList(tagList.filter(ele => ele !== item));
                     })
-                    .finally(() => {})
+                    .catch(() => {})
             },
-            onCancel() {},
+            onCancel() {
+                destroyTag.cancel();
+            },
           });
     };
 
-    const getList = (formData) => {
-        const tagMaps = {};
-        const tags = [];
-        tagList.forEach(tag => {
-            tagMaps[tag.id] = tag;
-            tags.push(tag);
-            tag.children.forEach((child) => {
-                tagMaps[child.id] = child;
-                tags.push(child);
-            });
-        });
-        if (!formData || !formData.tagIds.length) {
-            setList(tags);
-            return;
-        }
-        const set = {};
-        formData.tagIds.forEach((id) => {
-            if (tagMaps[id]) {
-                set[id] = tagMaps[id];
-                if (!set[id].pid) {
-                    set[id].children.forEach((child) => {
-                        set[child.id] = child;
-                    });
-                }
-            }
-        });
-        setList(Object.values(set));
-    };
-
-
     useEffect(() => {
-        changeLoadingStatus({ getList: true });
-        changeLoadingStatus({ getRelations: true });
-        Promise.all([getTagList('all').catch(() => []), relationAPI.getList().catch(() => [])])
-            .then(([tags, relations]) => {
-                const list = [];
-                const articleMap = {};
-                const linkMap = {};
-                relations.forEach((ele) => {
-                    const tagId = ele.tagId;
+        const callback = async () => {
+            const tags = await getTagList();
+            const tagTree = setTagTreeSelectable(tags);
+            let tagList = [];
+            tagTree.forEach((tag) => {
+                tag.parentTag = null;
+                tagList.push(tag);
+                tag.children.forEach((child) => {
+                    tagList.push(child);
+                    child.parentTag = tag;
+                });
+            });
+            setTagList(tagList);
+            setTagTree(tagTree);
+            
+            const relations = await getRelationList();
+            const articleMap = {};
+            const linkMap = {};
+            const getMapCount = (map, tagId) => (map[tagId] && map[tagId].length) || 0;
+
+            relations.forEach((ele) => {
+                const tagId = ele.tagId;
+                const type = Number(ele.type);
+                articleMap[tagId] = articleMap[tagId] || [];
+                linkMap[tagId] = linkMap[tagId] || [];
+                type === RELATION_TYPE.link.value && linkMap[tagId].push(ele);
+                type === RELATION_TYPE.article.value && articleMap[tagId].push(ele);
+            });
+
+            tagList = [];
+            tagTree.forEach(tag => {
+                const articleSet = new Set();
+                const linkSet = new Set();
+                tagList.push(tag);
+                tag.children.forEach((child) => {
+                    const tagId = child.id;
                     articleMap[tagId] = articleMap[tagId] || [];
                     linkMap[tagId] = linkMap[tagId] || [];
-                    Number(ele.type) === 1 ? linkMap[tagId].push(ele) :  articleMap[tagId].push(ele);
+                    child.articles = getMapCount(articleMap, child.id);
+                    child.links = getMapCount(linkMap, child.id);
+                    child.childs = 0;
+                    child.parentTag = tag;
+                    tagList.push(child); 
+                    articleMap[tagId].forEach(item => articleSet.add(item.noteId))
+                    linkMap[tagId].forEach(item => linkSet .add(item.noteId))
                 });
-                const getArticles = tagId => (articleMap[tagId] && articleMap[tagId].length) || 0;
-                const getLinks = tagId => (linkMap[tagId] && linkMap[tagId].length) || 0;
-                tags.forEach(tag => {
-                    list.push(tag);
-                    tag.children = tag.children || [];
-                    if (!tag.pid) {
-                        tag.children.forEach((child) => {
-                            child.articles = getArticles(child.id);
-                            child.links = getLinks(child.id);
-                            child.childs = 0;
-                            child.parentTag = tag;
-                            list.push(child); 
-                        });
-                    }
-                    tag.articles = tag.children.reduce((count, child) => count + child.articles, 0);
-                    tag.links = tag.children.reduce((count, child) => count + child.links, 0);
-                    tag.childs = tag.children.length;
-                    tag.parentTag = null;
-                });
-                setTagList(tags);
-                setList(list);
-            })
-            .finally(() => {
-                changeLoadingStatus({ getList: false });
-                changeLoadingStatus({ getRelations: false });
+                tag.articles = articleSet.size;
+                tag.links = linkSet.size;
+                tag.childs = tag.children.length;
+                tag.parentTag = null;
             });
+            setTagList(tagList);
+        }
+        callback().catch(() => {});
     }, []);
 
     const createMenu = () => (
@@ -149,25 +163,15 @@ function TagList() {
             <section className="blp-tag-header">
                 <Form onFinish={onFinish} form={form} initialValues={initialValues} layout="inline" className="blg-ant-form-inline">
                     <Form.Item name="tagIds" label="标签">
-                        <TreeSelect
-                            style={{width: 240}}
-                            filterTreeNode={filterTreeNode}
-                            treeData={tagList}
-                            maxTagCount={1}
-                            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                            showSearch
-                            allowClear
-                            multiple
-                            placeholder="请选择标签"
-                        />
+                        <BlogTreeSelect treeData={tagTree}/>
                     </Form.Item>
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={loading.getList} icon={<SearchOutlined/>}>
+                        <Button type="primary" htmlType="submit" loading={getTagList.loading} icon={<SearchOutlined/>}>
                         Submit
                         </Button>
                     </Form.Item>
                     <Form.Item>
-                        <Button onClick={onResetForm} loading={loading.getList} icon={<RollbackOutlined/>}>
+                        <Button onClick={onResetForm} loading={getTagList.loading} icon={<RollbackOutlined/>}>
                             Reset
                         </Button>
                     </Form.Item>
@@ -178,9 +182,9 @@ function TagList() {
                     <Button icon={<PlusOutlined />}>新增标签</Button>
                 </Dropdown>
             </section>
-            <Spin spinning={summerLoading} style={{minHeight: 300}}>
+            <Spin spinning={getTagList.loading} style={{minHeight: 300}}>
                 <section className="blp-tag-main">
-                    {list.map(ele => <TagItem {...ele} menu={getMenu(ele)}/>)}
+                    {tagList.map(ele => <TagItem {...ele} menu={getMenu(ele)}/>)}
                 </section>
             </Spin>
         </section>

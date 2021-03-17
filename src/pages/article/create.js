@@ -1,52 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import {Form, Button, message, Spin} from 'antd';
+import {Form, Button, message, Spin, Input} from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import articleAPI from '@/api/article';
-import { compareIds } from '@/lib/utils';
+import { createArticleAPI, updateArticleAPI } from '@/api/article';
+import { getTagListAPI } from '@/api/tag';
 import { ARTICLE_STATUS_MAP } from '@/enum/article';
-import BaseForm from './components/baseForm';
+import { setTagTreeLeafSelectable } from '@/common/utils';
+import { compareIds } from '@/lib/utils';
+import { useRequest } from '@/lib/hooks';
+import BlogTreeSelect from '@/components/tree-select';
 import './style/create.less';
 
 // TODO:  编辑器id替换成ref
 
+const formItemLayout = {
+    labelCol: { span: 4 },
+    wrapperCol: { span: 20 },
+};
+
+const rules = {
+    title: [
+        { required: true },
+        { whitespace: true },
+        { type: 'string', max: 60, min: 2 }
+    ],
+    description: [
+        { type: 'string', max: 200 },
+        { whitespace: true }
+    ],
+    keyword: [
+        { type: 'string', max: 200, required: true },
+        { whitespace: true }
+    ],
+    tagIds: [
+        { required: true },
+        { type: 'array' }
+    ],
+};
+
+const initialValues = {
+    title: '',
+    description: '',
+    keyword: '',
+    tagIds: []
+};
+
 function CreateArticlePage() {
     const [isFirstStep, setFirstStep] = useState(true);
-    const [loading, setLoading] = useState({ create: false, update: false });
     const [editor, setEditor] = useState();
     const [articleItem, setArticleItem] = useState(null);
+    const [tagTree, setTagTree] = useState([]);
     const [form] = Form.useForm();
-    const summerLoading = Object.keys(loading).some(key => loading[key]);
-    const saveLoading = loading.create || loading.update;
+    const getTagList = useRequest(getTagListAPI);
+    const createArticle = useRequest(createArticleAPI, { unmountAbort: false });
+    const updateArticle = useRequest(updateArticleAPI, { unmountAbort: false });
+    const summerLoading = [createArticle, updateArticle].some(item => item.loading);
+    const saveLoading = [updateArticle, createArticle].some(item => item.loading);
 
-    const changeLoadingStatus = (status = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, status));
-    };
-
-    const onNextStep = () => {
-        form.validateFields()
-            .then(() => {
-                setFirstStep(false);
-            })
-            .catch(() => {})
-    };
-    const onPreStep = () => {
-        setFirstStep(true);
-    };
-
-    const createArticle = (param) => {
-        changeLoadingStatus({ create: true });
-        articleAPI.create(param)
-            .then((res) => {
-                res.tagIds = res.tags.map(tag => tag.tagId);
-                delete res.tags;
-                setArticleItem(res);
-            })
-            .catch(() => {})
-            .finally(() => {
-                changeLoadingStatus({ create: false });
-            });
-    };
-    const updateArticle = (param) => {
+    const editArticle = (param) => {
         let data = null;
         const [adds, dels] = compareIds(param.tagIds, articleItem.tagIds);
         ['title', 'description', 'keyword', 'content'].forEach((key) => {
@@ -64,16 +74,23 @@ function CreateArticlePage() {
             return;
         }
         data.id = articleItem.id;
-        changeLoadingStatus({ update: true });
-        articleAPI.update(data)
+        updateArticle(data)
             .then(() => {
                 setArticleItem(Object.assign(articleItem, data));
             })
             .catch(() => {})
-            .finally(() => {
-                changeLoadingStatus({ update: false });
-            });
     };
+
+    const addArticle = (param) => {
+        createArticle(param)
+            .then((res) => {
+                res.tagIds = res.tags.map(tag => tag.tagId);
+                delete res.tags;
+                setArticleItem(res);
+            })
+            .catch(() => {})
+    };
+
     const onSaveArticle = (status) => {
         const content = editor.getMarkdown();
         if (!content || !content.trim()) {
@@ -83,11 +100,23 @@ function CreateArticlePage() {
         const baseFormData = form.getFieldsValue();
         baseFormData.content = content;
         if (articleItem) {
-            updateArticle(baseFormData);
+            editArticle(baseFormData);
         } else {
             baseFormData.status = String(status);
-            createArticle(baseFormData);
+            addArticle(baseFormData);
         }
+    };
+
+    const onNextStep = () => {
+        form.validateFields()
+            .then(() => {
+                setFirstStep(false);
+            })
+            .catch(() => {})
+    };
+
+    const onPreStep = () => {
+        setFirstStep(true);
     };
 
     useEffect(() => {
@@ -104,12 +133,6 @@ function CreateArticlePage() {
     }, []);
 
     useEffect(() => {
-        if (editor && !isFirstStep) {
-            editor.resize();
-        }
-    }, [editor, isFirstStep]);
-
-    useEffect(() => {
         form.setFieldsValue({
             title: '',
             description: '',
@@ -117,6 +140,22 @@ function CreateArticlePage() {
             tagIds: []
         });
     }, [])
+
+    useEffect(() => {
+        getTagList()
+            .then((tags) => {
+                setTagTree(setTagTreeLeafSelectable(tags));
+            })
+            .catch(() => {});
+    }, []);
+
+    
+    useEffect(() => {
+        if (editor && !isFirstStep) {
+            editor.resize();
+        }
+    }, [editor, isFirstStep]);
+
 
     const StepSwitch = (
         isFirstStep ?
@@ -138,24 +177,38 @@ function CreateArticlePage() {
                 {saveLoading ? '保存中' : '保存草稿'}
             </Button>
     );
-    const StepTab = (
-        <>
-            <BaseForm style={{display: isFirstStep ? 'block' : 'none' }} form={form}/>
-            <section className="blp-articleCreate-editor" style={{display: isFirstStep ? 'none' : 'block' }}>
-                <div id="blp-articleCreate-editor">
-                    <textarea style={{display: 'none'}}/>
-                </div>
-            </section>
-        </>
-    );
+    
 
     return (
         <div className="blp-articleCreate-page">
             <Spin spinning={summerLoading}>
                 <section className="blp-articleCreate-header">
-                    {StepSwitch}{ToolButtons}
+                    {StepSwitch}
+                    {ToolButtons}
                 </section>
-                {StepTab}
+                <section className="blpc-baseForm-component" style={{display: isFirstStep ? 'block' : 'none' }}>
+                    <Spin spinning={summerLoading}>
+                        <Form form={form} initialValues={initialValues}>
+                            <Form.Item name='title' label='标题' rules={rules.title} {...formItemLayout}>
+                                <Input allowClear maxLength={60} placeholder='请输入标题' autoComplete='off'/>
+                            </Form.Item>
+                            <Form.Item name="tagIds" label="标签" rules={rules.tagIds} {...formItemLayout}>
+                                <BlogTreeSelect trerData={tagTree}/>
+                            </Form.Item>
+                            <Form.Item name='keyword' label='关键字' rules={rules.keyword} {...formItemLayout}>
+                                <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入关键字'/>
+                            </Form.Item>
+                            <Form.Item name='description' label='文章描述' rules={rules.description} {...formItemLayout}>
+                                <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入描述'/>
+                            </Form.Item>
+                        </Form>
+                    </Spin>
+                </section>
+                <section className="blp-articleCreate-editor" style={{display: isFirstStep ? 'none' : 'block' }}>
+                    <div id="blp-articleCreate-editor">
+                        <textarea style={{display: 'none'}}/>
+                    </div>
+                </section>
             </Spin>
         </div>
     );

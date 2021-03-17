@@ -1,6 +1,7 @@
 import tagAPI from '@/api/tag';
 
 /**
+ * @deprecated 代码可拓展性差
  * @description 获取并组织标签树
  * @param {enum} type child, parent, all
  * @returns {array} 

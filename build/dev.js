@@ -113,6 +113,7 @@ const webpackConfig = {
         host: '127.0.0.1',
         port: 8080,
         hot: true,
+        clientLogLevel: 'silent', // 关闭控制台的更新日志信息
         historyApiFallback: {
             rewrites: [
                 { from: /.*/, to: '/' },

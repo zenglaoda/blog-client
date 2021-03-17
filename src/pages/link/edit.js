@@ -1,72 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, TreeSelect, Spin } from 'antd';
-import linkAPI from '@/api/link';
+import { Form, Input, Button, Spin } from 'antd';
+import { useHistory } from 'react-router-dom';
 import { parseQuery } from '@/lib/utils';
-import { useHistory } from '@/lib/router';
-import {
-    layout,
-    tailLayout,
-    rules,
-    getTagList,
-    useFilterTreeNode
-} from './common';
+import { useRequest } from '@/lib/hooks';
+import { getLinkItemAPI, updateLinkAPI } from '@/api/link';
+import { getTagListAPI } from '@/api/tag';
+import { setTagTreeLeafSelectable } from '@/common/utils';
+import { layout, tailLayout} from '@/common/layout';
+import BlogTreeSelect from '@/components/tree-select'; 
+import { rules, useGetInitialValues } from './common';
 import './style/create.less';
 
 function EditLink(props) {
     const query = parseQuery(props.location.search);
-    query.id = Number(query.id);
-
-    const [loading, setLoading] = useState({ getList: true, update: false, getItem: true });
-    const [loadError, setLoadError] = useState({ getList: true, getItem: true });
-    const [tagList, setTagList] = useState([]);
-    const [form] = Form.useForm();
+    const linkId = Number(query.id);
     const history = useHistory();
-    const summerLoading = Object.keys(loading).some(key => loading[key]);
-    const summerLoadError = Object.keys(loadError).some(key => loadError[key]);
+    if (!linkId) {
+        history.push('/link');
+        return null;
+    }
 
-    const changeLoadingStatus = (status = {}) => {
-        setLoading(preLoading => Object.assign({}, preLoading, status));
-    };
-
-    const changeLoadError = (status = {}) => {
-        setLoadError(preLoadError => Object.assign({}, preLoadError, status));
-    };
+    const [tagTree, setTagTree] = useState([]);
+    const [form] = Form.useForm();
+    const initialValues = useGetInitialValues();
+    const getTagList = useRequest(getTagListAPI);
+    const getLinkItem = useRequest(getLinkItemAPI);
+    const updateLink = useRequest(updateLinkAPI, { unmountAbort: false });
+    const summerLoading = [updateLink, getLinkItem, getTagList].some(item => item.loading);
 
     const onFinish = (formData) => {
-        changeLoadingStatus({ update: true });
-        formData.id = query.id;
-        linkAPI.update(formData)
-            .finally(() => changeLoadingStatus({ update: false}))
+        formData.id = linkId;
+        updateLink(formData)
             .then(() => {
                 history.push('/link');
-            });
+            })
+            .catch(() => {});
     };
-
-    const initialValues = {
-        title: '',
-        url: '',
-        tagIds: [],
-        description: ''
-    };
-
-    const filterTreeNode = useFilterTreeNode();
 
     useEffect(() => {
-        changeLoadingStatus({ getList: true });
         getTagList()
             .then((tags) => {
-                setTagList(tags);
-                changeLoadError({ getList: false });
+                const tagTree = setTagTreeLeafSelectable(tags);
+                setTagTree(tagTree);
             })
-            .catch(() => {
-                changeLoadError({ getList: true });
-            })
-            .finally(() => changeLoadingStatus({ getList: false }));
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
-        changeLoadingStatus({ getItem: true });
-        linkAPI.getItem({ id: query.id })
+        getLinkItem({ id: linkId })
             .then((item) => {
                 form.setFieldsValue({
                     title: item.title,
@@ -74,13 +55,9 @@ function EditLink(props) {
                     description: item.description,
                     tagIds: item.tags.map(ele => ele.tagId)
                 });
-                changeLoadError({ getItem: false });
             })
-            .catch(() => {
-                changeLoadError({ getItem: true });
-            })
-            .finally(() => changeLoadingStatus({ getItem: false }))
-    }, [query.id]);
+            .catch(() => {});
+    }, [linkId]);
 
     return (
         <div className="blp-link-create-page">
@@ -93,16 +70,7 @@ function EditLink(props) {
                         <Input allowClear maxLength={100} placeholder='请输入链接地址' autoComplete='off'/>
                     </Form.Item>
                     <Form.Item name="tagIds" label="标签" rules={rules.tagIds}>
-                        <TreeSelect
-                            filterTreeNode={filterTreeNode}
-                            treeData={tagList}
-                            maxTagCount={5}
-                            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                            showSearch
-                            allowClear
-                            multiple
-                            placeholder="请选择标签"
-                        />
+                        <BlogTreeSelect treeData={tagTree}/>
                     </Form.Item>
                     <Form.Item name='keyword' label='关键字' rules={rules.keyword}>
                         <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入关键字'/>
@@ -111,7 +79,7 @@ function EditLink(props) {
                         <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入描述'/>
                     </Form.Item>
                     <Form.Item {...tailLayout}>
-                        <Button type='primary' htmlType="submit" disabled={summerLoadError}>
+                        <Button type='primary' htmlType="submit" loading={updateLink.loading}>
                             Submit
                         </Button>
                     </Form.Item>
