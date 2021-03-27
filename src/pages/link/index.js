@@ -28,7 +28,6 @@ function LinkPage() {
         date: []
     };
 
-
     const getParams = () => {
         const formData = form.getFieldsValue(true);
         const params = {
@@ -120,7 +119,11 @@ function LinkPage() {
                         <Input placeholder="请输入关键字"/>
                     </Form.Item>
                     <Form.Item name="tagIds" label="标签">
-                        <BlogTreeSelect treeData={tagTree}/>
+                        <BlogTreeSelect 
+                            treeData={tagTree}
+                            treeCheckable 
+                            multiple 
+                        />
                     </Form.Item>
                     <Form.Item label="创建时间" name="date">
                         <RangePicker />

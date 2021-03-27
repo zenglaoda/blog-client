@@ -20,6 +20,8 @@ const ArticleCreatePage = lazy(() => import('@/pages/article/create'));
 const ArticleEditPage = lazy(() => import('@/pages/article/edit'));
 const ArticleDetailPage = lazy(() => import('@/pages/article/detail'));
 const DraftPage = lazy(() => import('@/pages/article/draft'));
+const DemoPage = lazy(() => import('@/pages/demo'));
+// const DemoPage = lazy(() => import('@/pages/demo/infinite'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -102,6 +104,7 @@ export default class Main extends React.Component {
                                     <Route path="/article/edit" component={ArticleEditPage} exact/>
                                     <Route path="/article/detail" component={ArticleDetailPage} exact/>
                                     <Route path="/draft" component={DraftPage} exact/>
+                                    <Route path="/demo" component={DemoPage} exact/>
                                 </Switch>
                             </Suspense>
                         </Content>

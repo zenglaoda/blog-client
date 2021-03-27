@@ -23,7 +23,7 @@ export const rules = {
         { type: 'string', max: 200, required: true },
         { whitespace: true }
     ],
-    tagIds: [
+    tagId: [
         { required: true }
     ]
 };

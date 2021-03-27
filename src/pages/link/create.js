@@ -10,7 +10,6 @@ import BlogTreeSelect from '@/components/tree-select';
 import { rules, useGetInitialValues } from './common';
 import './style/create.less';
 
-
 function CreateLink() {
     const [tagTree, setTagTree] = useState([]);
     const [form] = Form.useForm();
@@ -21,7 +20,7 @@ function CreateLink() {
     const summerLoading = [getTagList, createLink].some(item => item.loading);
 
     const onFinish = (formData) => {
-        linkAPI.create(formData)
+        createLink(formData)
             .then(() => {
                 history.push('/link');
             })
@@ -46,8 +45,8 @@ function CreateLink() {
                     <Form.Item name='url' label='链接地址' rules={rules.url}>
                         <Input allowClear maxLength={100} placeholder='请输入链接地址' autoComplete='off'/>
                     </Form.Item>
-                    <Form.Item name="tagIds" label="标签" rules={rules.tagIds}>
-                        <BlogTreeSelect treeData={tagTree}/>
+                    <Form.Item name="tagId" label="标签" rules={rules.tagId}>
+                        <BlogTreeSelect treeData={tagTree} multiple={false}/>
                     </Form.Item>
                     <Form.Item name='keyword' label='关键字' rules={rules.keyword}>
                         <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入关键字'/>

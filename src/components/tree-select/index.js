@@ -11,26 +11,24 @@ import { tagTreeFilter } from '@/common/utils';
  * @returns 
  */
 export default function BlogTreeSelect(props) {
-    const { 
-        treeData = [], 
-        value = [],
-        showSearch = true, 
-        allowClear = true,
-        multiple = true
-    } = props;
+    const treeDefaultProps = {
+        treeData: [], 
+        showSearch: true,
+        allowClear: true,
+        multiple: true,
+        maxTagCount: 2,
+        filterTreeNode: tagTreeFilter,
+        dropdownStyle: { maxHeight: 400, overflow: 'auto' },
+        style: { width: 240 },
+        placeholder: '请选择标签',
+    };
+
+    // TODO: Object.assign 合并策略
+    const treeProps = Object.assign({}, treeDefaultProps, {...props});
 
     return (
         <TreeSelect
-            filterTreeNode={tagTreeFilter}
-            treeData={treeData}
-            value={value}
-            maxTagCount={5}
-            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-            showSearch={showSearch}
-            allowClear={allowClear}
-            multiple={multiple}
-            style={{width: 240}}
-            placeholder="请选择标签"
+            {...treeProps}
         />
     );
 }

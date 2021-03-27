@@ -4,8 +4,8 @@ import { Form, Input, Button, Select, Spin } from 'antd';
 import { layout, tailLayout } from '@/common/layout';
 import { createTagAPI, getTagListAPI } from '@/api/tag';
 import { parseQuery } from '@/lib/utils';
+import { rules } from './common';
 import './style/create.less';
-
 
 @withRouter
 class CreateTag extends React.Component {
@@ -26,9 +26,10 @@ class CreateTag extends React.Component {
 
     // 设置加载状态
     setLoading(name = 'summer', show = false) {
-        const loading = this.state.loading;
-        loading[name] = show;
-        this.setState({ loading });
+        this.setState((loading) => {
+            loading[name] = show;
+            return loading;
+        });
     }
 
     // 创建标签
@@ -78,18 +79,6 @@ class CreateTag extends React.Component {
     
     render() {
         const { list, loading, level } = this.state;
-        const rules = {
-            pid: [
-                { required: true },
-            ],
-            name: [
-                { required: true },
-                { type: 'string', max: 30, min: 2 }
-            ],
-            description: [
-                { type: 'string', max: 300 }
-            ]
-        };
         const initialValues = {
             pid: level === 2 ? '' : 0,
             name: '',
@@ -107,13 +96,13 @@ class CreateTag extends React.Component {
 
         return (
             <div className="blp-tagCreate-page">
-                <Spin spinning={loading.summer}>
+                <Spin spinning={loading.summer || loading.create}>
                     <Form {...layout} initialValues={initialValues} onFinish={this.onFinish} className="blp-form">
                         {TagSelect}
                         <Form.Item name='name' label='标签名' rules={rules.name}>
                             <Input allowClear maxLength={30} placeholder='请输入标签名' autoComplete='off'/>
                         </Form.Item>
-                        <Form.Item name='description' label='标签描述' rules={rules.description}>
+                        <Form.Item name='description' label='描述' rules={rules.description}>
                             <Input.TextArea rows={4} allowClear maxLength={300} placeholder='请输入描述'/>
                         </Form.Item>
                         <Form.Item {...tailLayout}>

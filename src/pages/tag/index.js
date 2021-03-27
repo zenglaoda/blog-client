@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; 
 import { Form, Button, Spin, Menu, Dropdown, Modal } from 'antd';
 import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { RELATION_TYPE } from '@/enum/article';
 import { useRequest } from '@/lib/hooks';
-import { getRelationListAPI } from '@/api/relation';
 import { destroyTagAPI, getTagListAPI } from '@/api/tag';
 import { setTagTreeSelectable } from '@/common/utils';
 import BlogTreeSelect from '@/components/tree-select';
@@ -16,7 +14,6 @@ function TagList() {
     const [tagList, setTagList] = useState([]);
     const [form] = Form.useForm();
     const destroyTag = useRequest(destroyTagAPI);
-    const getRelationList = useRequest(getRelationListAPI);
     const getTagList = useRequest(getTagListAPI);
 
     const initialValues = {
@@ -95,19 +92,9 @@ function TagList() {
             setTagList(tagList);
             setTagTree(tagTree);
             
-            const relations = await getRelationList();
             const articleMap = {};
             const linkMap = {};
             const getMapCount = (map, tagId) => (map[tagId] && map[tagId].length) || 0;
-
-            relations.forEach((ele) => {
-                const tagId = ele.tagId;
-                const type = Number(ele.type);
-                articleMap[tagId] = articleMap[tagId] || [];
-                linkMap[tagId] = linkMap[tagId] || [];
-                type === RELATION_TYPE.link.value && linkMap[tagId].push(ele);
-                type === RELATION_TYPE.article.value && articleMap[tagId].push(ele);
-            });
 
             tagList = [];
             tagTree.forEach(tag => {
@@ -139,10 +126,10 @@ function TagList() {
     const createMenu = () => (
         <Menu>
             <Menu.Item>
-                <Link to={`/tag/create?level=1`}>一级</Link>                
+                <Link to={`/tag/create?level=1`}>一级标签</Link>                
             </Menu.Item>
             <Menu.Item>
-                <Link to={`/tag/create?level=2`}>二级</Link>                
+                <Link to={`/tag/create?level=2`}>二级标签</Link>                
             </Menu.Item>
         </Menu>
     );
@@ -163,7 +150,11 @@ function TagList() {
             <section className="blp-tag-header">
                 <Form onFinish={onFinish} form={form} initialValues={initialValues} layout="inline" className="blg-ant-form-inline">
                     <Form.Item name="tagIds" label="标签">
-                        <BlogTreeSelect treeData={tagTree}/>
+                        <BlogTreeSelect 
+                            treeData={tagTree}
+                            treeCheckable 
+                            multiple 
+                        />
                     </Form.Item>
                     <Form.Item>
                         <Button type="primary" htmlType="submit" loading={getTagList.loading} icon={<SearchOutlined/>}>

@@ -53,7 +53,8 @@ function EditLink(props) {
                     title: item.title,
                     url: item.url,
                     description: item.description,
-                    tagIds: item.tags.map(ele => ele.tagId)
+                    keyword: item.keyword,
+                    tagId: item.tag.id
                 });
             })
             .catch(() => {});
@@ -69,8 +70,8 @@ function EditLink(props) {
                     <Form.Item name='url' label='链接地址' rules={rules.url}>
                         <Input allowClear maxLength={100} placeholder='请输入链接地址' autoComplete='off'/>
                     </Form.Item>
-                    <Form.Item name="tagIds" label="标签" rules={rules.tagIds}>
-                        <BlogTreeSelect treeData={tagTree}/>
+                    <Form.Item name="tagId" label="标签" rules={rules.tagId}>
+                        <BlogTreeSelect treeData={tagTree} multiple={false}/>
                     </Form.Item>
                     <Form.Item name='keyword' label='关键字' rules={rules.keyword}>
                         <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入关键字'/>
