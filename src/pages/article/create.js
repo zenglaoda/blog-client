@@ -1,21 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import {Form, Button, message, Spin, Input} from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { createArticleAPI, updateArticleAPI } from '@/api/article';
+import React, { useState, useEffect, useRef } from 'react';
+import { Form, Button, message, Spin, Input, Radio, Modal } from 'antd';
+import { SaveOutlined } from '@ant-design/icons'
+import { createArticleAPI, updateArticleAPI, getArticleAPI } from '@/api/article';
 import { getTagListAPI } from '@/api/tag';
-import { ARTICLE_STATUS_MAP } from '@/enum/article';
+import { ARTICLE_STATUS } from '@/enum/article';
 import { setTagTreeLeafSelectable } from '@/common/utils';
-import { compareIds } from '@/lib/utils';
+import { layout } from '@/common/layout';
+import { getChangedData } from '@/lib/utils';
 import { useRequest } from '@/lib/hooks';
+import { parseQuery } from '@/lib/utils';
 import BlogTreeSelect from '@/components/tree-select';
 import './style/create.less';
-
-// TODO:  编辑器id替换成ref
-
-const formItemLayout = {
-    labelCol: { span: 4 },
-    wrapperCol: { span: 20 },
-};
 
 const rules = {
     title: [
@@ -23,124 +18,178 @@ const rules = {
         { whitespace: true },
         { type: 'string', max: 60, min: 2 }
     ],
+    status: [
+        { 
+            required: true, 
+            type: 'enum', 
+            enum: [ARTICLE_STATUS.draft.value, ARTICLE_STATUS.finished.value]
+        }
+    ],
     description: [
-        { type: 'string', max: 200 },
+        { type: 'string', max: 300 },
         { whitespace: true }
     ],
     keyword: [
-        { type: 'string', max: 200, required: true },
-        { whitespace: true }
+        { type: 'string', max: 300, required: true,whitespace: true },
     ],
-    tagIds: [
-        { required: true },
-        { type: 'array' }
+    tagId: [
+        { required: true, type: 'integer' },
     ],
 };
 
 const initialValues = {
-    title: '',
-    description: '',
-    keyword: '',
-    tagIds: []
+    title: '测试创建文章',
+    status: ARTICLE_STATUS.draft.value,
+    description: '测试创建文章',
+    keyword: 'proxy,vue双向绑定',
+    tagId: ''
 };
+// const initialValues = {
+//     title: '',
+//     status: ARTICLE_STATUS.draft.value,
+//     description: '',
+//     keyword: '',
+//     tagId: ''
+// };
 
-function CreateArticlePage() {
-    const [isFirstStep, setFirstStep] = useState(true);
+export default function CreateArticlePage(props) {
+    const query = parseQuery(props.location.search);
+    const [isFirstStep, setFirstStep] = useState(!query.id);
     const [editor, setEditor] = useState();
     const [articleItem, setArticleItem] = useState(null);
     const [tagTree, setTagTree] = useState([]);
     const [form] = Form.useForm();
+    const contentChangedRef = useRef(false);
+    const editorLoadedRef = useRef(false);
     const getTagList = useRequest(getTagListAPI);
+    const getArticle = useRequest(getArticleAPI);
     const createArticle = useRequest(createArticleAPI, { unmountAbort: false });
     const updateArticle = useRequest(updateArticleAPI, { unmountAbort: false });
-    const summerLoading = [createArticle, updateArticle].some(item => item.loading);
+    const summerLoading = [createArticle, updateArticle, getTagList, getArticle].some(item => item.loading);
     const saveLoading = [updateArticle, createArticle].some(item => item.loading);
+    
 
-    const editArticle = (param) => {
-        let data = null;
-        const [adds, dels] = compareIds(param.tagIds, articleItem.tagIds);
-        ['title', 'description', 'keyword', 'content'].forEach((key) => {
-            if (articleItem[key] !== param[key]) {
-                data = data || {};
-                data[key] = param[key];
-            }
-        });
-        if (adds.length || dels.length) {
-            data = data || {};
-            data.tagIds = param.tagIds;
-        }
-        if (!data) {
-            message.info('未作任何修改!');
-            return;
-        }
-        data.id = articleItem.id;
-        updateArticle(data)
+    const editArticle = (params) => {
+        return updateArticle(params)
             .then(() => {
-                setArticleItem(Object.assign(articleItem, data));
+                setArticleItem(Object.assign(articleItem, params));
+                contentChangedRef.current = false;
             })
             .catch(() => {})
     };
 
-    const addArticle = (param) => {
-        createArticle(param)
+    const addArticle = (params) => {
+        return createArticle(params)
             .then((res) => {
-                res.tagIds = res.tags.map(tag => tag.tagId);
-                delete res.tags;
                 setArticleItem(res);
+                contentChangedRef.current = false;
             })
-            .catch(() => {})
+            .catch(() => {});
     };
 
-    const onSaveArticle = (status) => {
-        const content = editor.getMarkdown();
-        if (!content || !content.trim()) {
-            message.error('请输入文章内容!');
-            return;
-        }
+    const onSubmit = () => {
         const baseFormData = form.getFieldsValue();
+        const content = editor.getMarkdown();
+        const draft = ARTICLE_STATUS.draft.value;
+        const finished = ARTICLE_STATUS.finished.value;
         baseFormData.content = content;
-        if (articleItem) {
-            editArticle(baseFormData);
-        } else {
-            baseFormData.status = String(status);
-            addArticle(baseFormData);
-        }
-    };
 
-    const onNextStep = () => {
+        const cb = () => {
+            if (!articleItem) {
+                addArticle(baseFormData);
+                return;
+            }
+            
+            let params = getChangedData(baseFormData, articleItem, ['title', 'description', 'keyword', 'content', 'status']);
+            if (!params) {
+                message.info('未作任何修改!');
+                return;
+            }
+            if (content.trim().length < 20 && finished === params.status) {
+                message.info('请完善文章内容!');
+                return;
+            }
+        
+            params = baseFormData;
+            params.id = articleItem.id;
+            !contentChangedRef.current && (params.content = undefined);
+
+            if (params.status === draft && articleItem.status === finished) {
+                Modal.confirm({
+                    title: `确定将【已完成】文章存为【草稿】?`,
+                    onOk() {
+                        return editArticle(params);
+                    },
+                    onCancel() {
+                        updateArticle.cancel();
+                    },
+                });
+                return;
+            }
+
+            editArticle(params)
+        }
+
         form.validateFields()
             .then(() => {
-                setFirstStep(false);
+                cb();
             })
-            .catch(() => {})
+            .catch(() => {
+                setFirstStep(true);
+            });
+        
     };
 
-    const onPreStep = () => {
-        setFirstStep(true);
-    };
-
+    
+    // 初始化编辑器
     useEffect(() => {
-        const editor = window.editormd('blp-articleCreate-editor', {
+        const editor = window.editormd('blp-editor', {
             width  : '100%',
             height : '600px',
             path   : '/editormd/lib/',
             theme : "dark",
             previewTheme : "dark",
             editorTheme : "pastel-on-dark",
-            saveHTMLToTextarea: true
+            saveHTMLToTextarea: true,
+            onchange() {
+                contentChangedRef.current = true;
+            },
+            onload() {
+                editorLoadedRef.current = true;
+                this.resize();
+            }
         });
         setEditor(editor);
     }, []);
 
+    // 重置编辑器尺寸
     useEffect(() => {
-        form.setFieldsValue({
-            title: '',
-            description: '',
-            keyword: '',
-            tagIds: []
-        });
-    }, [])
+        if (editor && !isFirstStep && editorLoadedRef.current) {
+            editor.resize();
+        }
+    }, [editor, isFirstStep]);
 
+    // 获取详情
+    useEffect(() => {
+        if (query.id) {
+            getArticle({ id: query.id })
+                .then((res) => {
+                    setArticleItem(res);
+                    form.setFieldsValue({
+                        title: item.title,
+                        description: item.description,
+                        keyword: item.keyword,
+                        tagId: item.tagId
+                    });
+                })
+                .catch(() => {})
+        } else {
+            setArticleItem(null);
+            form.setFieldsValue({...initialValues});
+        }
+    }, [query.id])
+
+    // 获取tagList
     useEffect(() => {
         getTagList()
             .then((tags) => {
@@ -149,63 +198,53 @@ function CreateArticlePage() {
             .catch(() => {});
     }, []);
 
-    
-    useEffect(() => {
-        if (editor && !isFirstStep) {
-            editor.resize();
-        }
-    }, [editor, isFirstStep]);
-
-
-    const StepSwitch = (
-        isFirstStep ?
-        <Button type="text" style={{padding: 0, marginRight: 20}} onClick={onNextStep} className="blp-articleCreate-header-button">
-            下一步
-            <RightOutlined />
-        </Button> :
-        <Button type="text" style={{padding: 0, marginRight: 20}} onClick={onPreStep} className="blp-articleCreate-header-button">
-            <LeftOutlined />
-            上一步
-        </Button>
-    );
-    const ToolButtons = isFirstStep ? null : (
-        (articleItem && articleItem.status === ARTICLE_STATUS_MAP.finished) ?
-            <Button type="primary" loading={saveLoading} onClick={()=>onSaveArticle(1)} className="blp-articleCreate-header-button">
-                {saveLoading ? '保存中' : '保存文章'}
-            </Button> :
-            <Button type="primary" loading={saveLoading} onClick={()=>onSaveArticle(2)} className="blp-articleCreate-header-button">
-                {saveLoading ? '保存中' : '保存草稿'}
-            </Button>
-    );
-    
-
     return (
         <div className="blp-articleCreate-page">
+            <section className="blp-header">
+                    <div>
+                        <Radio.Group value={isFirstStep} onChange={(event) => setFirstStep(event.target.value)}>
+                            <Radio.Button value={true}>基础信息</Radio.Button>
+                            <Radio.Button value={false}>文章内容</Radio.Button>
+                        </Radio.Group>
+                    </div>
+                    <div>
+                        <Button 
+                            type="primary" 
+                            icon={<SaveOutlined />} 
+                            loading={saveLoading} 
+                            onClick={() => onSubmit()}
+                        >
+                            {saveLoading ? '保存中...' : '保存'}
+                        </Button>
+                    </div>
+                </section>
+
             <Spin spinning={summerLoading}>
-                <section className="blp-articleCreate-header">
-                    {StepSwitch}
-                    {ToolButtons}
+                <section className="blp-form" style={{display: isFirstStep ? 'block' : 'none' }}>
+                    <Form form={form} initialValues={initialValues} {...layout}>
+                        <Form.Item name='title' label='标题' rules={rules.title}>
+                            <Input allowClear maxLength={60} placeholder='请输入标题' autoComplete='off'/>
+                        </Form.Item>
+                        <Form.Item name="tagId" label="标签" rules={rules.tagId}>
+                            <BlogTreeSelect treeData={tagTree} multiple={false}/>
+                        </Form.Item>
+                        <Form.Item name="status" label="状态" rules={rules.status}>
+                            <Radio.Group>
+                                <Radio value={ARTICLE_STATUS.finished.value}>{ARTICLE_STATUS.finished.label}</Radio>
+                                <Radio value={ARTICLE_STATUS.draft.value}>{ARTICLE_STATUS.draft.label}</Radio>
+                            </Radio.Group>
+                        </Form.Item>
+                        <Form.Item name='keyword' label='关键字' rules={rules.keyword}>
+                            <Input.TextArea rows={4} allowClear maxLength={300} placeholder='请输入关键字'/>
+                        </Form.Item>
+                        <Form.Item name='description' label='文章描述' rules={rules.description}>
+                            <Input.TextArea rows={4} allowClear maxLength={300} placeholder='请输入描述'/>
+                        </Form.Item>
+                    </Form>
                 </section>
-                <section className="blpc-baseForm-component" style={{display: isFirstStep ? 'block' : 'none' }}>
-                    <Spin spinning={summerLoading}>
-                        <Form form={form} initialValues={initialValues}>
-                            <Form.Item name='title' label='标题' rules={rules.title} {...formItemLayout}>
-                                <Input allowClear maxLength={60} placeholder='请输入标题' autoComplete='off'/>
-                            </Form.Item>
-                            <Form.Item name="tagIds" label="标签" rules={rules.tagIds} {...formItemLayout}>
-                                <BlogTreeSelect trerData={tagTree}/>
-                            </Form.Item>
-                            <Form.Item name='keyword' label='关键字' rules={rules.keyword} {...formItemLayout}>
-                                <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入关键字'/>
-                            </Form.Item>
-                            <Form.Item name='description' label='文章描述' rules={rules.description} {...formItemLayout}>
-                                <Input.TextArea rows={4} allowClear maxLength={200} placeholder='请输入描述'/>
-                            </Form.Item>
-                        </Form>
-                    </Spin>
-                </section>
-                <section className="blp-articleCreate-editor" style={{display: isFirstStep ? 'none' : 'block' }}>
-                    <div id="blp-articleCreate-editor">
+
+                <section className="blp-editor" style={{display: isFirstStep ? 'none' : 'block' }}>
+                    <div id="blp-editor">
                         <textarea style={{display: 'none'}}/>
                     </div>
                 </section>
@@ -213,5 +252,3 @@ function CreateArticlePage() {
         </div>
     );
 }
-
-export default CreateArticlePage;

@@ -70,3 +70,28 @@ export function compareIds(fresh, origin) {
     });
     return [adds, dels];
 }
+
+/**
+ * @description 找出两个对象中不一样的键值组成一个新的对象
+ * @param {object} fresh 
+ * @param {object} origin 
+ * @return {object}
+ */
+export function getChangedData(fresh, origin, keys = []) {
+    if (!keys.length) {
+        keys = [
+            ...Object.keys(fresh),
+            ...Object.keys(origin)
+        ];
+    }
+    keys = [...new Set(keys)];
+    let diffs;
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        if (fresh[key] !== origin[key]) {
+            diffs = diffs || {};
+            diffs[key] = fresh[key];
+        }
+    }
+    return diffs;
+}

@@ -17,7 +17,6 @@ const LinkCreatePage = lazy(() => import('@/pages/link/create'));
 const LinkEditPage = lazy(() => import('@/pages/link/edit'));
 const ArticlePage = lazy(() => import('@/pages/article'));
 const ArticleCreatePage = lazy(() => import('@/pages/article/create'));
-const ArticleEditPage = lazy(() => import('@/pages/article/edit'));
 const ArticleDetailPage = lazy(() => import('@/pages/article/detail'));
 const DraftPage = lazy(() => import('@/pages/article/draft'));
 const DemoPage = lazy(() => import('@/pages/demo'));
@@ -101,7 +100,7 @@ export default class Main extends React.Component {
                                     <Route path="/link/edit" component={LinkEditPage} exact/>
                                     <Route path="/article" component={ArticlePage} exact/>
                                     <Route path="/article/create" component={ArticleCreatePage} exact/>
-                                    <Route path="/article/edit" component={ArticleEditPage} exact/>
+                                    <Route path="/article/edit" component={ArticleCreatePage} exact/>
                                     <Route path="/article/detail" component={ArticleDetailPage} exact/>
                                     <Route path="/draft" component={DraftPage} exact/>
                                     <Route path="/demo" component={DemoPage} exact/>

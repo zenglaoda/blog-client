@@ -55,7 +55,7 @@ function LinkPage() {
         getLinkList(params)
             .then((res) => {
                 setLinkList(res.rows || []);
-                pager.setTotal(res.total);
+                pager.setTotal(res.count);
                 if (pager.page !== 1 && !linkList.length) {
                     pager.setPage(1);
                     getList();
@@ -151,7 +151,11 @@ function LinkPage() {
                 </Spin>
             </section>
             <section className="blp-link-footer">
-                <BlogPagination disabled={getLinkList.loading} pager={pager} onChanges={getList}/>
+                <BlogPagination 
+                    disabled={getLinkList.loading} 
+                    pager={pager} 
+                    onChanges={getList}
+                />
             </section>
         </section>
     );

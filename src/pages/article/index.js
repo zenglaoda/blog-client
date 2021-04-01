@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Form, Input, Button, DatePicker, Spin, Pagination, Menu, Modal } from 'antd';
+import { Form, Input, Button, DatePicker, Spin, Select, Menu, Modal } from 'antd';
 import { SearchOutlined, RollbackOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { destroyArticleAPI, getArticleListAPI } from '@/api/article';
 import { getTagListAPI } from '@/api/tag';
 import { usePagination, useRequest } from '@/lib/hooks';
 import { stringifyQuery } from '@/lib/utils';
+import { ARTICLE_STATUS_LIST, ARTICLE_STATUS } from '@/enum/article';
 import { setTagTreeSelectable } from '@/common/utils';
 import NoteItem from '@/components/noteItem'; 
 import BlogTreeSelect from '@/components/tree-select';
@@ -25,6 +26,7 @@ function ArticlePage() {
 
     const initialValues = {
         keyword: '',
+        status: ARTICLE_STATUS.all.value,
         tagIds: [],
         date: []
     };
@@ -57,7 +59,7 @@ function ArticlePage() {
         const params = getParams();
         getArticleList(params)
             .then((res) => {
-                pager.setTotal(res.total);
+                pager.setTotal(res.count);
                 setArticleList(res.rows || []);
                 if (pager.page !== 1 && !articleList.length) {
                     pager.setPage(1);
@@ -129,6 +131,13 @@ function ArticlePage() {
                     <Form.Item label="关键字" name="keyword">
                         <Input placeholder="请输入关键字" allowClear maxLength={100}/>
                     </Form.Item>
+                    <Form.Item label="状态" name="status">
+                        <Select placeholder="请选择文章状态" style={{width: '200px'}}>
+                            {ARTICLE_STATUS_LIST.map(item => 
+                                <Select.Option key={item.value} value={item.value}>{item.label}</Select.Option>
+                            )}
+                        </Select>
+                    </Form.Item>
                     <Form.Item name="tagIds" label="标签">
                         <BlogTreeSelect 
                             treeData={tagTree}
@@ -164,7 +173,11 @@ function ArticlePage() {
                 </Spin>
             </section>
             <section className="blp-article-footer">
-                <BlogPagination pager={pager} disabled={getArticleList.loading} onChanges={getList}/>
+                <BlogPagination 
+                    pager={pager} 
+                    disabled={getArticleList.loading} 
+                    onChanges={getList}
+                />
             </section>
         </section>
     );

@@ -40,11 +40,12 @@ export default function NoteItem(props) {
                     {props.updatedAt}
                 </span>
                 {
-					!showType ? null :
+					showType ?
 					<span className="blc-note-property__type">
 						类型:&nbsp;
 						{isLink ? '链接' : '文章'}
 					</span>
+                    :null
 				}
 				{
 					!props.menu ? null :
