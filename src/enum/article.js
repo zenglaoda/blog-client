@@ -1,18 +1,10 @@
-/**
- * @deprecated
- */
-export const ARTICLE_STATUS_MAP = {
-    finished: '1', // 已完成
-    draft: '2', // 草稿
-};
-
-/**
- * @deprecated
- */
-export const ARTICLE_STATUS_LABEL = {
-    1: '已完成',
-    2: '草稿'
-};
+function map2Label(maps) {
+    return Object.keys(maps).reduce((m, key) => {
+        const item = maps[key];
+        m[item.value] = item.label;
+        return m;
+    }, {});
+}
 
 // 文章状态
 export const ARTICLE_STATUS = {
@@ -26,6 +18,8 @@ export const ARTICLE_STATUS_LIST = [
     ARTICLE_STATUS.finished,
     ARTICLE_STATUS.draft,
 ];
+
+export const ARTICLE_STATUS_LABEL = map2Label(ARTICLE_STATUS);
 
 // 笔记与目录的关联类型
 export const NOTE_TYPE = {

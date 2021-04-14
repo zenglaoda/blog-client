@@ -6,9 +6,8 @@ import { getTagListAPI } from '@/api/tag';
 import { ARTICLE_STATUS } from '@/enum/article';
 import { setTagTreeLeafSelectable } from '@/common/utils';
 import { layout } from '@/common/layout';
-import { getChangedData } from '@/lib/utils';
+import { getChangedData, parseQuery } from '@/lib/utils';
 import { useRequest } from '@/lib/hooks';
-import { parseQuery } from '@/lib/utils';
 import BlogTreeSelect from '@/components/tree-select';
 import './style/create.less';
 
@@ -38,41 +37,32 @@ const rules = {
 };
 
 const initialValues = {
-    title: '测试创建文章',
+    title: '',
     status: ARTICLE_STATUS.draft.value,
-    description: '测试创建文章',
-    keyword: 'proxy,vue双向绑定',
+    description: '',
+    keyword: '',
     tagId: ''
 };
-// const initialValues = {
-//     title: '',
-//     status: ARTICLE_STATUS.draft.value,
-//     description: '',
-//     keyword: '',
-//     tagId: ''
-// };
 
 export default function CreateArticlePage(props) {
     const query = parseQuery(props.location.search);
     const [isFirstStep, setFirstStep] = useState(!query.id);
-    const [editor, setEditor] = useState();
     const [articleItem, setArticleItem] = useState(null);
     const [tagTree, setTagTree] = useState([]);
     const [form] = Form.useForm();
+    const [editor, setEditor] = useState();
     const contentChangedRef = useRef(false);
-    const editorLoadedRef = useRef(false);
     const getTagList = useRequest(getTagListAPI);
     const getArticle = useRequest(getArticleAPI);
     const createArticle = useRequest(createArticleAPI, { unmountAbort: false });
     const updateArticle = useRequest(updateArticleAPI, { unmountAbort: false });
     const summerLoading = [createArticle, updateArticle, getTagList, getArticle].some(item => item.loading);
     const saveLoading = [updateArticle, createArticle].some(item => item.loading);
-    
 
     const editArticle = (params) => {
         return updateArticle(params)
             .then(() => {
-                setArticleItem(Object.assign(articleItem, params));
+                setArticleItem(Object.assign({}, articleItem, params));
                 contentChangedRef.current = false;
             })
             .catch(() => {})
@@ -140,49 +130,55 @@ export default function CreateArticlePage(props) {
         
     };
 
-    
     // 初始化编辑器
     useEffect(() => {
-        const editor = window.editormd('blp-editor', {
+        window.editormd('blp-editor', {
             width  : '100%',
             height : '600px',
             path   : '/editormd/lib/',
-            theme : "dark",
-            previewTheme : "dark",
-            editorTheme : "pastel-on-dark",
+            // theme : "dark",
+            // previewTheme : "dark",
+            // editorTheme : "pastel-on-dark",
             saveHTMLToTextarea: true,
             onchange() {
                 contentChangedRef.current = true;
             },
             onload() {
-                editorLoadedRef.current = true;
+                setEditor(this);
                 this.resize();
             }
         });
-        setEditor(editor);
     }, []);
 
     // 重置编辑器尺寸
     useEffect(() => {
-        if (editor && !isFirstStep && editorLoadedRef.current) {
-            editor.resize();
+        if (!editor || isFirstStep) {
+            return
         }
-    }, [editor, isFirstStep]);
+        editor.resize();
+    }, [isFirstStep, editor]);
+
+    // 设置编辑器内容
+    useEffect(() => {
+        if (editor && articleItem) {
+            editor.setMarkdown(articleItem.content);
+        }
+    }, [editor, articleItem && articleItem.content]);
 
     // 获取详情
     useEffect(() => {
         if (query.id) {
             getArticle({ id: query.id })
-                .then((res) => {
-                    setArticleItem(res);
+                .then((item) => {
+                    setArticleItem(item);
                     form.setFieldsValue({
                         title: item.title,
+                        status: item.status,
                         description: item.description,
                         keyword: item.keyword,
                         tagId: item.tagId
                     });
                 })
-                .catch(() => {})
         } else {
             setArticleItem(null);
             form.setFieldsValue({...initialValues});
@@ -212,6 +208,7 @@ export default function CreateArticlePage(props) {
                             type="primary" 
                             icon={<SaveOutlined />} 
                             loading={saveLoading} 
+                            disabled={!editor}
                             onClick={() => onSubmit()}
                         >
                             {saveLoading ? '保存中...' : '保存'}

@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Route, Link, Switch, withRouter } from 'react-router-dom';
 import { Layout, Menu, Breadcrumb } from 'antd';
-import { TagsOutlined, FileTextOutlined, FileSearchOutlined, LinkOutlined, SnippetsOutlined } from '@ant-design/icons';
+import { TagsOutlined, FileTextOutlined, FileSearchOutlined, LinkOutlined, AppstoreOutlined, CloudOutlined } from '@ant-design/icons';
 
 // 页面加载过渡组件
 import PageLoad from '@/components/page-load';
@@ -18,7 +18,8 @@ const LinkEditPage = lazy(() => import('@/pages/link/edit'));
 const ArticlePage = lazy(() => import('@/pages/article'));
 const ArticleCreatePage = lazy(() => import('@/pages/article/create'));
 const ArticleDetailPage = lazy(() => import('@/pages/article/detail'));
-const DraftPage = lazy(() => import('@/pages/article/draft'));
+const RecommendPage = lazy(() => import('@/pages/recommend'));
+// const DraftPage = lazy(() => import('@/pages/article/draft'));
 const DemoPage = lazy(() => import('@/pages/demo'));
 // const DemoPage = lazy(() => import('@/pages/demo/infinite'));
 
@@ -65,6 +66,12 @@ export default class Main extends React.Component {
                             defaultOpenKeys={['/article']}
                             selectedKeys={selectedKeys}
                             style={{ height: '100%', borderRight: 0 }}>
+                            <Menu.Item key="/site" icon={<AppstoreOutlined />}>
+                                <Link to="/site">常用站点</Link>
+                            </Menu.Item>
+                            <Menu.Item key="/recommend" icon={<CloudOutlined />}>
+                                <Link to="/site">优质项目</Link>
+                            </Menu.Item>
                             <Menu.Item key="/note" icon={<FileSearchOutlined />}>
                                 <Link to="/note">笔记</Link>
                             </Menu.Item>
@@ -77,21 +84,14 @@ export default class Main extends React.Component {
                             <Menu.Item key="/tag" icon={<TagsOutlined />}>
                                 <Link to="/tag">标签</Link>
                             </Menu.Item>
-                            <Menu.Item key="/draft" icon={<SnippetsOutlined />}>
-                                <Link to="/draft">草稿</Link>
-                            </Menu.Item>
                         </Menu>
                     </Sider>
                 
                     <div className="bll-main">
-                        <Breadcrumb style={{ margin: '16px 0' }}>
-                            <Breadcrumb.Item>Home</Breadcrumb.Item>
-                            <Breadcrumb.Item>List</Breadcrumb.Item>
-                            <Breadcrumb.Item>App</Breadcrumb.Item>
-                        </Breadcrumb>
                         <Content className="bll-content">
                             <Suspense fallback={<PageLoad/>}>
                                 <Switch>
+                                    <Route path="/recommend" component={RecommendPage} exect/>
                                     <Route path="/tag" component={TagPage} exact/>
                                     <Route path="/tag/create" component={TagCreatePage} exact/>
                                     <Route path="/tag/edit" component={TagEditPage} exact/>
@@ -102,8 +102,8 @@ export default class Main extends React.Component {
                                     <Route path="/article/create" component={ArticleCreatePage} exact/>
                                     <Route path="/article/edit" component={ArticleCreatePage} exact/>
                                     <Route path="/article/detail" component={ArticleDetailPage} exact/>
-                                    <Route path="/draft" component={DraftPage} exact/>
                                     <Route path="/demo" component={DemoPage} exact/>
+                                    <Route component={RecommendPage}/>
                                 </Switch>
                             </Suspense>
                         </Content>

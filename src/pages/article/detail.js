@@ -1,56 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { PageHeader, Descriptions, Spin, Typography  } from 'antd';
-import articleAPI from '@/api/article';
+import { useHistory } from 'react-router-dom';
+import { getArticleAPI } from '@/api/article';
 import { parseQuery } from '@/lib/utils';
-import { useHistory } from '@/lib/router';
+import useRequest from '@/lib/hooks/useRequest';
 import { ARTICLE_STATUS_LABEL } from '@/enum/article';
 import './style/detail.less';
 
 const { Title } = Typography;
 
 export default function ArticleDetailPage(props) {
-    const query = parseQuery(props.location.search);
-    const [articleItem, setArticleItem] = useState({ tags: [] });
-    const [loading, setLoading] = useState({ getItem: true });
     const history = useHistory();
-    const summerLoading = Object.keys(loading).some(key => loading[key]);
-
-    const changeLoadingStatus = (status = {}) => {
-        setLoading(preState => Object.assign({}, preState, status));
-    };
+    const [articleItem, setArticleItem] = useState({});
+    const getArticle = useRequest(getArticleAPI);
+    const query = parseQuery(props.location.search);
 
     useEffect(() => {
-        changeLoadingStatus({ getItem: true });
-        articleAPI.getItem({ id: query.id })
+        if (!query.id) {
+            return;
+        }
+        getArticle({ id: query.id })
             .then((item) => {
                 setArticleItem(item);
-                const markdown = item.content;
-                editormd.markdownToHTML("blp-articleDetail-article__content", {
-                    markdown        : markdown ,//+ "\r\n" + $("#append-test").text(),
-                    //htmlDecode      : true,       // 开启 HTML 标签解析，为了安全性，默认不开启
-                    htmlDecode      : "style,script,iframe",  // you can filter tags decode
-                    //toc             : false,
-                    tocm            : true,    // Using [TOCM]
-                    //tocContainer    : "#custom-toc-container", // 自定义 ToC 容器层
-                    //gfm             : false,
-                    //tocDropdown     : true,
-                    // markdownSourceCode : true, // 是否保留 Markdown 源码，即是否删除保存源码的 Textarea 标签
+                editormd.markdownToHTML('blp-editor', {
+                    markdown        : item.content,
+                    htmlDecode      : "style,script,iframe",
+                    tocm            : true,
+                    gfm             : true,
                     emoji           : true,
                     taskList        : true,
-                    tex             : true,  // 默认不解析
-                    flowChart       : false,  // 默认不解析
-                    sequenceDiagram : false,  // 默认不解析
+                    tex             : true,
+                    flowChart       : false,
+                    sequenceDiagram : false,
                 });
             })
             .catch(() => {})
-            .finally(() => {
-                changeLoadingStatus({ getItem: false });
-            })
     }, [query.id]);
+
+    if (!query.id) {
+        return null;
+    }
 
     return (
         <div className="blg-fullscreen blp-articleDetail-page">
-            <Spin spinning={summerLoading}>
+            <Spin spinning={getArticle.loading}>
                 <PageHeader
                     ghost={false}
                     onBack={() => history.push('/article')}
@@ -71,20 +64,20 @@ export default function ArticleDetailPage(props) {
                             {articleItem.keyword}
                         </Descriptions.Item>
                         <Descriptions.Item label="所属标签">
-                            {articleItem.tags.map(tag => tag.tagName).join(' , ')}
+                            {articleItem.tag && articleItem.tag.name}
                         </Descriptions.Item>
                     </Descriptions>
                 </PageHeader>
-                <div className="blp-articleDetail-main">
-                    <section className="blp-articleDetail-article">
-                        <Title className="blp-articleDetail-article__title">
+                <div className="blp-main">
+                    <section className="blp-article">
+                        <Title level={2} className="blp-title">
                             {articleItem.title}
                         </Title>
-                        <div className="blp-articleDetail-article__description">
+                        <div className="blp-description">
                             {articleItem.description}
                         </div>
-                        <div id="blp-articleDetail-article__content" className="blp-articleDetail-article__content">
-                            <textarea id="blp-articleDetail-article-text" style={{display: 'none'}}/>
+                        <div className="blp-content" id="blp-editor">
+                            <textarea style={{display: 'none'}}/>
                         </div>
                     </section>
                 </div>

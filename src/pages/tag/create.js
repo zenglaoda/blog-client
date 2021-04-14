@@ -26,9 +26,9 @@ class CreateTag extends React.Component {
 
     // 设置加载状态
     setLoading(name = 'summer', show = false) {
-        this.setState((loading) => {
+        this.setState(({ loading }) => {
             loading[name] = show;
-            return loading;
+            return { loading };
         });
     }
 

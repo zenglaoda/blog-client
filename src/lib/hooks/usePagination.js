@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useRef } from 'react';
 
 /**
  * @description 使用分页组件
- * @param {object} initialValues 
  * @returns {function}
  */
 export default function usePagination(initialValues = {}) {
@@ -13,13 +12,15 @@ export default function usePagination(initialValues = {}) {
             pageSize: 10            
         }, initialValues);
     }
-    const [store, setStore]  = useState(initial);
+    const refStore = useRef(initial());
+    const store = refStore.current;
 
     function pager(data) {
-        setStore(preStore => Object.assign({}, preStore, data));
+        Object.assign(store, data);
+        Object.assign(pager, store);
     }
     pager.reset = function() {
-        setStore(initial());
+        pager(initial());
     }
     pager.setTotal = function(total) {
         pager({ total })
@@ -30,10 +31,7 @@ export default function usePagination(initialValues = {}) {
     pager.setPageSize = function(pageSize) {
         pager({ pageSize })
     }
-
-    Object.keys(store).forEach(key => {
-        pager[key] = store[key];
-    });
+    pager(store);
 
     return [pager];
 }
